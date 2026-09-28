@@ -1,0 +1,4 @@
+.agents/created-plans/*
+.env
+/main
+/frontend

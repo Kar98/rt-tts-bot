@@ -1,0 +1,40 @@
+{
+  "name": "ADK Development",
+  "build": { "dockerfile": "Dockerfile" },
+  "remoteUser": "vscode"
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {
+      "moby": false
+    },
+    "ghcr.io/jsburckhardt/devcontainer-features/just:1": {},
+	"ghcr.io/dhoeric/features/google-cloud-cli:1": {}
+  },
+  "containerEnv": {
+    "CLOUDSDK_CORE_PROJECT": "artosis-tts-bot",
+	"GOOGLE_CLOUD_PROJECT": "artosis-tts-bot",
+    "CLOUDSDK_COMPUTE_ZONE": "us-central1-a",
+	"GOOGLE_GENAI_USE_VERTEXAI": "TRUE",
+    "CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
+    "TZ": "Australia/Sydney",
+    "LANG": "en_AU.UTF-8",
+    "LANGUAGE": "en_AU:en"
+  },
+  "forwardPorts": [8080],
+  "portsAttributes": { "8080": { "label": "ADK Web UI" } },
+  "mounts": [
+  ],
+  "postCreateCommand": "[ -f go.mod ] && go mod download || true",
+  "customizations": {
+    "vscode": {
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "zsh"
+      },
+      "extensions": [
+        "Anthropic.claude-code", "golang.go"
+      ]
+    }
+  }
+}

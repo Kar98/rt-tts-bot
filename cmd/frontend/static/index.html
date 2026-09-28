@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Twitch Chat Summary</title>
+<style>
+  :root {
+    --bg: #f6f5f9; --panel: #fff; --text: #1d1b22; --muted: #6b6775;
+    --border: #dcd8e3; --accent: #7c4dff; --you: #ece6ff; --agent: #f1f0f4; --err: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141218; --panel: #1d1b22; --text: #e8e5ee; --muted: #9a95a6;
+      --border: #36323f; --accent: #a58bff; --you: #2e2745; --agent: #26232d; --err: #f2b8b5;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, sans-serif; }
+  main { max-width: 720px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; min-height: 100vh; }
+  h1 { font-size: 20px; margin: 0; }
+  form { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+  label.grow { flex: 1 1 180px; }
+  input { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; width: 100%; }
+  input[type=number] { width: 110px; }
+  button { font: inherit; font-weight: 600; color: #fff; background: var(--accent); border: 0; border-radius: 6px; padding: 9px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+  button:disabled { opacity: .6; cursor: progress; }
+  .spinner { width: 14px; height: 14px; border: 2px solid #fff6; border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; display: none; }
+  button:disabled .spinner { display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  #log { flex: 1; display: flex; flex-direction: column; gap: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; overflow-y: auto; min-height: 240px; }
+  #log:empty::before { content: "Pick a channel and press Summarise chat."; color: var(--muted); }
+  .msg { max-width: 85%; padding: 8px 12px; border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .msg b { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .you { align-self: flex-end; background: var(--you); }
+  .agent { align-self: flex-start; background: var(--agent); }
+  .error { color: var(--err); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Twitch chat summary</h1>
+  <form id="form">
+    <label class="grow">Channel <input id="channel" placeholder="default channel" autocomplete="off"></label>
+    <label>Seconds <input id="seconds" type="number" min="1" max="60" value="30"></label>
+    <label>Max messages <input id="messages" type="number" min="1" max="300" value="100"></label>
+    <button id="go" type="submit"><span class="spinner"></span>Summarise chat</button>
+  </form>
+  <div id="log" aria-live="polite"></div>
+</main>
+<script>
+  const $ = (id) => document.getElementById(id);
+  let sessionId = "";
+
+  function add(who, text, cls) {
+    const div = document.createElement("div");
+    div.className = "msg " + cls;
+    const name = document.createElement("b");
+    name.textContent = who;
+    div.append(name, document.createTextNode(text));
+    $("log").append(div);
+    $("log").scrollTop = $("log").scrollHeight;
+  }
+
+  $("form").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const channel = $("channel").value.trim();
+    const seconds = Math.min(60, Math.max(1, parseInt($("seconds").value, 10) || 30));
+    const messages = Math.min(300, Math.max(1, parseInt($("messages").value, 10) || 100));
+    add("you", `Summarise ${channel || "the default channel"} (${seconds}s / ${messages} messages)`, "you");
+    $("go").disabled = true;
+    try {
+      const res = await fetch("/api/summarise", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ channel, seconds, messages, sessionId }),
+      });
+      const data = await res.json();
+      if (data.sessionId) sessionId = data.sessionId;
+      if (!res.ok || data.error) throw new Error(data.error || res.statusText);
+      add("agent", data.reply, "agent");
+    } catch (err) {
+      add("agent", "Error: " + err.message, "agent error");
+    } finally {
+      $("go").disabled = false;
+    }
+  });
+</script>
+</body>
+</html>
