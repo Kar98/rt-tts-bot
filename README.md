@@ -17,38 +17,34 @@ An ADK Go agent that reads a Twitch channel's chat and summarises it in at most 
 | `internal/agents` | `chat_summariser` subagent |
 | `internal/observability` | Langfuse → `OTEL_*` env setup |
 | `cmd/frontend` | Web page with a "Summarise chat" button, on `:8090` |
+| `langfuse` | Docker Compose for a local Langfuse |
+| `justfile` | Commands to run, test and deploy |
 
 ## Run locally
 
-Needs Application Default Credentials for Vertex AI:
+Commands are [just](https://github.com/casey/just) recipes, and `just` lists them. Every recipe loads `agents/main/.env`.
 
-```bash
-gcloud auth application-default login
-cp agents/main/.env.example agents/main/.env   # then fill it in
-```
+`just setup` logs in with Application Default Credentials for Vertex AI and copies the `.env.example` files that haven't been copied yet. Fill in `agents/main/.env` afterwards.
 
 Console:
 
 ```bash
-set -a; source agents/main/.env; set +a
-go run ./agents/main console
+just console
 # > summarise chat for xqc, 20 seconds
 ```
 
 Web page (two terminals):
 
 ```bash
-set -a; source agents/main/.env; set +a
-go run ./agents/main web api webui      # agent on :8080 (ADK dev UI included)
-
-go run ./cmd/frontend                   # http://localhost:8090
+just web        # agent on :8080 (ADK dev UI included)
+just frontend   # http://localhost:8090
 ```
 
 `AGENT_URL` points the frontend at a different ADK REST base URL (default `http://localhost:8080/api`).
 
 If the model isn't served in your region, set `MODEL` to another model, or `MODEL_LOCATION` (for example `global`) to call the model from a different location.
 
-Tests: `go test ./...`. To check reading real chat: `TWITCH_TEST_CHANNEL=xqc go test -run Network -v ./internal/twitchchat/`.
+Tests: `just test`. To check reading real chat: `just test-network xqc`.
 
 ## Langfuse
 
@@ -59,34 +55,40 @@ Set `LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY`. At startup
 
 Only traces are exported. Don't set the generic `OTEL_EXPORTER_OTLP_ENDPOINT`, because that also turns on OTLP log export, which Langfuse doesn't accept. If Langfuse isn't configured, the agent logs a warning and runs without it.
 
+### Local Langfuse
+
+`langfuse/docker-compose.yml` runs Langfuse v4 (web, worker, Postgres, ClickHouse, Redis, MinIO) with a seeded project and API keys:
+
+```bash
+just langfuse-up
+```
+
+The UI is at http://localhost:3000 (login `admin@example.com` / `password123`). First start takes a minute while migrations run. In `agents/main/.env` set:
+
+```bash
+LANGFUSE_HOST=http://localhost:3000
+LANGFUSE_PUBLIC_KEY=pk-lf-local
+LANGFUSE_SECRET_KEY=sk-lf-local
+```
+
+`just langfuse-down` stops it, and `just langfuse-reset` also deletes the data. The seeded keys only apply on first start, so change them in `langfuse/.env` before then or run `just langfuse-reset` afterwards.
+
 On Agent Engine, `adkgo deploy` can't set custom env vars, so the values are read from Secret Manager (`langfuse-host`, `langfuse-public-key`, `langfuse-secret-key`) instead.
 
 ## Deploy to Agent Engine
 
-One-time setup:
+One-time setup. This enables the APIs, stores the Langfuse values in Secret Manager, lets the Agent Engine service account read them, and installs `adkgo`:
 
 ```bash
-PROJECT=artosis-tts-bot
-gcloud services enable aiplatform.googleapis.com secretmanager.googleapis.com cloudbuild.googleapis.com --project $PROJECT
-
-printf '%s' "https://langfuse.example.com" | gcloud secrets create langfuse-host --data-file=- --project $PROJECT
-printf '%s' "pk-lf-..."                    | gcloud secrets create langfuse-public-key --data-file=- --project $PROJECT
-printf '%s' "sk-lf-..."                    | gcloud secrets create langfuse-secret-key --data-file=- --project $PROJECT
-
-PN=$(gcloud projects describe $PROJECT --format='value(projectNumber)')
-gcloud projects add-iam-policy-binding $PROJECT \
-  --member="serviceAccount:service-$PN@gcp-sa-aiplatform-re.iam.gserviceaccount.com" \
-  --role=roles/secretmanager.secretAccessor
-
-go install google.golang.org/adk/v2/cmd/adkgo@v2.4.0
+just gcp-setup https://langfuse.example.com pk-lf-... sk-lf-...
 ```
 
-Deploy from the repo root:
+Deploy:
 
 ```bash
-adkgo deploy agentengine -p artosis-tts-bot -r us-central1 -s artosis-tts-agent -e ./agents/main
+just deploy
 # later updates:
-adkgo deploy agentengine -p artosis-tts-bot -r us-central1 -s artosis-tts-agent -e ./agents/main --agent_engine_id <id>
+just deploy <id>
 ```
 
 `TWITCH_DEFAULT_CHANNEL` can't be set on Agent Engine either, so name the channel in each request. The frontend always sends it when the field is filled in.
@@ -94,7 +96,7 @@ adkgo deploy agentengine -p artosis-tts-bot -r us-central1 -s artosis-tts-agent 
 Point the frontend at the deployment:
 
 ```bash
-AGENT_ENGINE_ID=<id> GOOGLE_CLOUD_PROJECT=artosis-tts-bot GOOGLE_CLOUD_LOCATION=us-central1 go run ./cmd/frontend
+just frontend <id>
 ```
 
 Cost notes: Agent Engine bills for vCPU and memory while instances run, and Vertex sessions and model tokens cost extra. Keep `max_seconds` small, because live collection holds the request open. If Agent Engine turns out too expensive, `adkgo deploy cloudrun` scales to zero, and you can point the frontend's `AGENT_URL` at the Cloud Run URL.

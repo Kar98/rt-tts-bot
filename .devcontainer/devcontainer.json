@@ -19,8 +19,11 @@
     "LANG": "en_AU.UTF-8",
     "LANGUAGE": "en_AU:en"
   },
-  "forwardPorts": [8080],
-  "portsAttributes": { "8080": { "label": "ADK Web UI" } },
+  "forwardPorts": [8080, 3000],
+  "portsAttributes": {
+    "8080": { "label": "ADK Web UI" },
+    "3000": { "label": "Langfuse" }
+  },
   "mounts": [
   ],
   "postCreateCommand": "[ -f go.mod ] && go mod download || true",
