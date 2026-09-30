@@ -16,6 +16,7 @@ import (
 const (
 	envTracesEndpoint = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"
 	envHeaders        = "OTEL_EXPORTER_OTLP_HEADERS"
+	envCaptureContent = "OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT"
 )
 
 // LangfuseConfig holds the Langfuse connection details.
@@ -84,13 +85,18 @@ func ConfigureLangfuse(ctx context.Context, project string) error {
 // OTelEnv returns the OTLP exporter env vars for cfg. Only the traces endpoint
 // is set: Langfuse does not accept OTLP logs, and the generic
 // OTEL_EXPORTER_OTLP_ENDPOINT would enable the ADK log exporter too.
+//
+// ADK leaves prompts and responses off model and agent spans by default, which
+// Langfuse shows as null input and output. SPAN_ONLY puts them on the spans;
+// the EVENT modes would put them in log records, which we don't export.
 func OTelEnv(cfg LangfuseConfig) map[string]string {
 	auth := base64.StdEncoding.EncodeToString([]byte(cfg.PublicKey + ":" + cfg.SecretKey))
 	return map[string]string{
 		envTracesEndpoint: strings.TrimRight(cfg.Host, "/") + "/api/public/otel/v1/traces",
 		// The exporter splits on the first '=' and URL-unescapes the value;
 		// base64 contains no '%' or ',' so it passes through unchanged.
-		envHeaders: "Authorization=Basic " + auth,
+		envHeaders:        "Authorization=Basic " + auth,
+		envCaptureContent: "SPAN_ONLY",
 	}
 }
 

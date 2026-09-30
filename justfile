@@ -21,8 +21,9 @@ console:
     go run ./agents/main console
 
 # Agent REST API and ADK dev UI on :8080
+# A run holds the request open while it reads chat (up to 60s), so the default 15s write timeout cuts it off.
 web:
-    go run ./agents/main web api webui
+    go run ./agents/main web -write-timeout 2m api webui
 
 # Frontend on :8090. Pass an Agent Engine ID to use the deployment instead of `just web`.
 frontend id="":

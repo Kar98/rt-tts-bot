@@ -15,6 +15,9 @@ func TestOTelEnv(t *testing.T) {
 	if want := "Authorization=Basic cGs6c2s="; got[envHeaders] != want {
 		t.Errorf("headers = %q, want %q", got[envHeaders], want)
 	}
+	if want := "SPAN_ONLY"; got[envCaptureContent] != want {
+		t.Errorf("capture content = %q, want %q", got[envCaptureContent], want)
+	}
 	if _, ok := got["OTEL_EXPORTER_OTLP_ENDPOINT"]; ok {
 		t.Errorf("generic OTLP endpoint must not be set")
 	}

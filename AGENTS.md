@@ -13,7 +13,6 @@ Applies to everything you write: comments, docstrings, commit messages, PR descr
 **LLM tells to avoid.**
 - Enthusiasm and narration: "Here we...", "Now we...", "Let's...", "Great!", "Certainly!".
 - Em dashes used as a tic. Use a full stop or a comma.
-- Rule-of-three lists and "not just X, but Y" constructions.
 - Closing summaries that repeat what the text already said.
 - Bold, headers, or bullets on things that are one sentence.
 

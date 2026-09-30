@@ -52,8 +52,9 @@ Set `LANGFUSE_HOST`, `LANGFUSE_PUBLIC_KEY` and `LANGFUSE_SECRET_KEY`. At startup
 
 - `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT=$LANGFUSE_HOST/api/public/otel/v1/traces`
 - `OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic base64(pk:sk)`
+- `OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=SPAN_ONLY`, so model and agent spans carry their prompts and responses. Without it Langfuse shows their input and output as empty.
 
-Only traces are exported. Don't set the generic `OTEL_EXPORTER_OTLP_ENDPOINT`, because that also turns on OTLP log export, which Langfuse doesn't accept. If Langfuse isn't configured, the agent logs a warning and runs without it.
+Any of these already set in the environment are left alone. Only traces are exported. Don't set the generic `OTEL_EXPORTER_OTLP_ENDPOINT`, because that also turns on OTLP log export, which Langfuse doesn't accept. If Langfuse isn't configured, the agent logs a warning and runs without it.
 
 ### Local Langfuse
 

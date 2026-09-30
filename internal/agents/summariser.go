@@ -2,6 +2,7 @@
 package agents
 
 import (
+	"log"
 	"strings"
 
 	"google.golang.org/genai"
@@ -25,8 +26,6 @@ Summarise the chat transcript below in at most 300 characters. Cover the main
 topics, any questions viewers asked, and the overall mood. Reply with the
 summary only: no preamble, no quotes, no markdown.
 
-If the transcript is empty, reply that chat was quiet.
-
 Transcript (one message per line, "[time] user: text"):
 {` + tools.TranscriptStateKey + `?}`
 
@@ -39,6 +38,26 @@ func NewSummariser(m model.LLM) (agent.Agent, error) {
 		Model:       m,
 		Description: "Summarises the Twitch chat saved by read_twitch_chat in at most 300 characters.",
 		Instruction: summariserInstruction,
+		BeforeModelCallbacks: []llmagent.BeforeModelCallback{
+			func(ctx agent.Context, llmRequest *model.LLMRequest) (*model.LLMResponse, error) {
+				if llmRequest == nil {
+					return nil, nil
+				}
+				// example: FormatTranscript renders messages one per line as "[15:04:05] user: text".
+				// type = string
+				transcript, err := ctx.State().Get(tools.TranscriptStateKey)
+				if err != nil {
+					return nil, err
+				}
+				if len(transcript.(string)) == 0 {
+					log.Printf("%s", transcript)
+					return &model.LLMResponse{
+						Content: genai.NewContentFromText("No chat messages were posted", genai.RoleModel),
+					}, nil
+				}
+				return nil, nil
+			},
+		},
 		AfterModelCallbacks: []llmagent.AfterModelCallback{
 			func(_ agent.Context, resp *model.LLMResponse, err error) (*model.LLMResponse, error) {
 				if err != nil || resp == nil {

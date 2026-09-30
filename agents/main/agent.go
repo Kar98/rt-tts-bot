@@ -75,10 +75,10 @@ func run() error {
 		return fmt.Errorf("failed to create summariser: %w", err)
 	}
 
-	channelHint := "The user must name a channel."
-	if defaultChannel != "" {
-		channelHint = fmt.Sprintf("If the user does not name a channel, use %q.", twitchchat.NormaliseChannel(defaultChannel))
-	}
+	// channelHint := "The user must name a channel."
+	// if defaultChannel != "" {
+	// 	channelHint = fmt.Sprintf("If the user does not name a channel, use %q.", twitchchat.NormaliseChannel(defaultChannel))
+	// }
 	mainAgent, err := llmagent.New(llmagent.Config{
 		Name:        agentName,
 		Model:       model,
@@ -86,7 +86,7 @@ func run() error {
 		Instruction: `You summarise Twitch chat for the user.
 
 When asked to summarise chat:
-1. Call ` + tools.ReadChatToolName + ` with the channel, and with max_seconds and max_messages if the user gave them. ` + channelHint + `
+1. Call ` + tools.ReadChatToolName + ` with the channel, and with max_seconds and max_messages if the user gave them.
 2. If the result has an "error", tell the user plainly what went wrong and stop.
 3. Otherwise call ` + agents.SummariserName + ` with the request "Summarise the chat".
 4. Reply with the summary exactly as returned, with no extra text.
