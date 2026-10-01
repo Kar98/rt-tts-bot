@@ -33,6 +33,8 @@ Transcript (one message per line, "[time] user: text"):
 // read_twitch_chat stored in session state, and its output is truncated to
 // MaxSummaryRunes even if the model ignores the instruction.
 func NewSummariser(m model.LLM) (agent.Agent, error) {
+	// get the instructions from the .md file and load them in here.
+	// summariserInstruction := ""
 	return llmagent.New(llmagent.Config{
 		Name:        SummariserName,
 		Model:       m,
