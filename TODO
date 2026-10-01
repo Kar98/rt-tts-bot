@@ -1,7 +1,7 @@
-- Add the instruction loading to make it easier to read.
+
 - Add loading in from a preset list of messages to do some testing
-- Add some evals 
 
-
+Getting an error with; 
+Error: run: 500 Internal Server Error: failed to run agent: failed to call model: Error 404, Message: Publisher model `projects/artosis-tts-bot/locations/us-central1/publishers/google/models/gemini-3.5-flash` was not found or your project does not have access to it. Ensure you are using a valid model name and that the model is available in the specified region. For more information, see: https://docs.cloud.google.com/gemini-enterprise-agent-platform/resources/locations., Status: NOT_FOUND, Details: []
 
 - Implement the features.txt

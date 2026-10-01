@@ -38,3 +38,10 @@ func TestBuildMessage(t *testing.T) {
 		t.Errorf("got %q, want %q", got, want)
 	}
 }
+
+func TestBuildMessageStored(t *testing.T) {
+	got := buildMessage(summariseRequest{Channel: "random_chat.txt", Seconds: 20, Messages: 50, Stored: true})
+	if want := "Summarise the Twitch chat from the stored messages (source: stored) in random_chat.txt, up to 50 messages."; got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+}

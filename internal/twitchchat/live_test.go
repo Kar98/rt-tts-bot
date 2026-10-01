@@ -137,13 +137,6 @@ func TestLiveSourceValidates(t *testing.T) {
 	}
 }
 
-func TestStoredSourceNotImplemented(t *testing.T) {
-	_, err := StoredSource{}.Fetch(context.Background(), Request{})
-	if !errors.Is(err, ErrNotImplemented) {
-		t.Errorf("err = %v, want ErrNotImplemented", err)
-	}
-}
-
 func TestFormatTranscript(t *testing.T) {
 	msgs := []Message{
 		{User: "alice", Text: "hi", Time: time.Date(2026, 1, 1, 15, 4, 5, 0, time.UTC)},

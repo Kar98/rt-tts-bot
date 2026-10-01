@@ -18,7 +18,7 @@ type Message struct {
 
 // Request describes which messages to fetch.
 type Request struct {
-	// Channel is the Twitch channel name, with or without a leading '#'.
+	// Channel is the Twitch channel name, or message data to load
 	Channel string
 	// MaxDuration bounds how long a live source listens for.
 	MaxDuration time.Duration

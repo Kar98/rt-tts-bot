@@ -26,6 +26,9 @@ type summariseRequest struct {
 	Seconds   int    `json:"seconds"`
 	Messages  int    `json:"messages"`
 	SessionID string `json:"sessionId"`
+	// Stored reads saved messages instead of live chat. Channel is then the
+	// message_data file name.
+	Stored bool `json:"stored"`
 }
 
 type summariseResponse struct {
@@ -95,10 +98,16 @@ func summariseHandler(client AgentClient) http.HandlerFunc {
 func buildMessage(req summariseRequest) string {
 	var b strings.Builder
 	b.WriteString("Summarise the Twitch chat")
-	if ch := strings.TrimSpace(req.Channel); ch != "" {
+	ch := strings.TrimSpace(req.Channel)
+	if req.Stored {
+		b.WriteString(" from the stored messages (source: stored)")
+		if ch != "" {
+			fmt.Fprintf(&b, " in %s", ch)
+		}
+	} else if ch != "" {
 		fmt.Fprintf(&b, " for channel %s", ch)
 	}
-	if req.Seconds > 0 {
+	if req.Seconds > 0 && !req.Stored {
 		fmt.Fprintf(&b, " over %d seconds", req.Seconds)
 	}
 	if req.Messages > 0 {

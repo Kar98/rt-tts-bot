@@ -3,9 +3,11 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.36.0"
@@ -51,8 +53,6 @@ func run() error {
 		return fmt.Errorf("failed to configure Langfuse: %w", err)
 	}
 
-	// MODEL_LOCATION lets the model live in a different region (e.g. "global")
-	// from the agent.
 	model, err := gemini.NewModel(ctx, firstNonEmpty(os.Getenv("MODEL"), defaultModel), &genai.ClientConfig{
 		Backend:  genai.BackendVertexAI,
 		Project:  project,
@@ -75,23 +75,19 @@ func run() error {
 		return fmt.Errorf("failed to create summariser: %w", err)
 	}
 
-	// channelHint := "The user must name a channel."
-	// if defaultChannel != "" {
-	// 	channelHint = fmt.Sprintf("If the user does not name a channel, use %q.", twitchchat.NormaliseChannel(defaultChannel))
-	// }
+	varMapping := map[string]string{
+		"tools.ReadChatToolName": tools.ReadChatToolName,
+		"agents.SummariserName":  agents.SummariserName,
+	}
+	instruction, err := loadInstruction(varMapping)
+	if err != nil {
+		return err
+	}
 	mainAgent, err := llmagent.New(llmagent.Config{
 		Name:        agentName,
 		Model:       model,
 		Description: "Reads a Twitch channel's chat and summarises it.",
-		Instruction: `You summarise Twitch chat for the user.
-
-When asked to summarise chat:
-1. Call ` + tools.ReadChatToolName + ` with the channel, and with max_seconds and max_messages if the user gave them.
-2. If the result has an "error", tell the user plainly what went wrong and stop.
-3. Otherwise call ` + agents.SummariserName + ` with the request "Summarise the chat".
-4. Reply with the summary exactly as returned, with no extra text.
-
-For anything else, briefly explain that you summarise Twitch chat.`,
+		Instruction: instruction,
 		Tools: []tool.Tool{
 			readChat,
 			agenttool.New(summariser, nil),
@@ -131,6 +127,20 @@ For anything else, briefly explain that you summarise Twitch chat.`,
 		return fmt.Errorf("run failed: %w\n\n%s", err, l.CommandLineSyntax())
 	}
 	return nil
+}
+
+// Embedded so the agent finds it whatever directory it runs from.
+//
+//go:embed instruction.md
+var instructionTemplate string
+
+func loadInstruction(mappings map[string]string) (string, error) {
+	tostr := instructionTemplate
+	for k, v := range mappings {
+		keytoreplace := "{" + k + "}"
+		tostr = strings.ReplaceAll(tostr, keytoreplace, v)
+	}
+	return tostr, nil
 }
 
 func firstNonEmpty(vals ...string) string {

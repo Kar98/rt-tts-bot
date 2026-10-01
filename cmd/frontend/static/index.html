@@ -25,9 +25,11 @@
   input { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; width: 100%; }
   input[type=number] { width: 110px; }
   button { font: inherit; font-weight: 600; color: #fff; background: var(--accent); border: 0; border-radius: 6px; padding: 9px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+  button.secondary { color: var(--accent); background: transparent; border: 1px solid var(--accent); }
   button:disabled { opacity: .6; cursor: progress; }
   .spinner { width: 14px; height: 14px; border: 2px solid #fff6; border-top-color: #fff; border-radius: 50%; animation: spin .8s linear infinite; display: none; }
-  button:disabled .spinner { display: inline-block; }
+  button.busy .spinner { display: inline-block; }
+  button.secondary .spinner { border-color: color-mix(in srgb, var(--accent) 40%, transparent); border-top-color: var(--accent); }
   @keyframes spin { to { transform: rotate(360deg); } }
   #log { flex: 1; display: flex; flex-direction: column; gap: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; overflow-y: auto; min-height: 240px; }
   #log:empty::before { content: "Pick a channel and press Summarise chat."; color: var(--muted); }
@@ -46,6 +48,7 @@
     <label>Seconds <input id="seconds" type="number" min="1" max="60" value="30"></label>
     <label>Max messages <input id="messages" type="number" min="1" max="300" value="100"></label>
     <button id="go" type="submit"><span class="spinner"></span>Summarise chat</button>
+    <button id="stored" type="button" class="secondary" title="Channel is the stored file name, e.g. random_chat.txt"><span class="spinner"></span>Summarise stored chat</button>
   </form>
   <div id="log" aria-live="polite"></div>
 </main>
@@ -63,18 +66,20 @@
     $("log").scrollTop = $("log").scrollHeight;
   }
 
-  $("form").addEventListener("submit", async (e) => {
-    e.preventDefault();
+  async function summarise(stored, button) {
     const channel = $("channel").value.trim();
     const seconds = Math.min(60, Math.max(1, parseInt($("seconds").value, 10) || 30));
     const messages = Math.min(300, Math.max(1, parseInt($("messages").value, 10) || 100));
-    add("you", `Summarise ${channel || "the default channel"} (${seconds}s / ${messages} messages)`, "you");
-    $("go").disabled = true;
+    add("you", stored
+      ? `Summarise stored chat ${channel || "(default)"} (${messages} messages)`
+      : `Summarise ${channel || "the default channel"} (${seconds}s / ${messages} messages)`, "you");
+    $("go").disabled = $("stored").disabled = true;
+    button.classList.add("busy");
     try {
       const res = await fetch("/api/summarise", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel, seconds, messages, sessionId }),
+        body: JSON.stringify({ channel, seconds, messages, sessionId, stored }),
       });
       const data = await res.json();
       if (data.sessionId) sessionId = data.sessionId;
@@ -83,9 +88,16 @@
     } catch (err) {
       add("agent", "Error: " + err.message, "agent error");
     } finally {
-      $("go").disabled = false;
+      $("go").disabled = $("stored").disabled = false;
+      button.classList.remove("busy");
     }
+  }
+
+  $("form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    summarise(false, $("go"));
   });
+  $("stored").addEventListener("click", () => summarise(true, $("stored")));
 </script>
 </body>
 </html>
