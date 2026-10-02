@@ -1,5 +1,5 @@
 // Package agents builds the LLM agents used by the Twitch chat agent.
-package agents
+package summariser
 
 import (
 	"log"

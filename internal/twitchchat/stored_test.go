@@ -8,9 +8,10 @@ import (
 
 func TestMessageLoading(t *testing.T) {
 	ss := StoredSource{}
-	messages, err := ss.Fetch(t.Context(), Request{Channel: "random_chat.txt"})
+	messages, err := ss.Fetch(t.Context(), Request{Channel: "artosis.txt"})
 	assert.NoError(t, err)
 	assert.NotEmpty(t, messages)
+	assert.Equal(t, "nice surround", messages[0].Text)
 	// Check empty
 	messages, err = ss.Fetch(t.Context(), Request{Channel: "empty.txt"})
 	assert.NoError(t, err)

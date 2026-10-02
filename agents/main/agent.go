@@ -24,7 +24,7 @@ import (
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/agenttool"
 
-	"github.com/Kar98/artosis-tts-agent/internal/agents"
+	"github.com/Kar98/artosis-tts-agent/internal/agents/summariser"
 	"github.com/Kar98/artosis-tts-agent/internal/observability"
 	"github.com/Kar98/artosis-tts-agent/internal/tools"
 	"github.com/Kar98/artosis-tts-agent/internal/twitchchat"
@@ -70,14 +70,14 @@ func run() error {
 		return fmt.Errorf("failed to create read chat tool: %w", err)
 	}
 
-	summariser, err := agents.NewSummariser(model)
+	summariser_agent, err := summariser.NewSummariser(model)
 	if err != nil {
 		return fmt.Errorf("failed to create summariser: %w", err)
 	}
 
 	varMapping := map[string]string{
-		"tools.ReadChatToolName": tools.ReadChatToolName,
-		"agents.SummariserName":  agents.SummariserName,
+		"tools.ReadChatToolName":    tools.ReadChatToolName,
+		"summariser.SummariserName": summariser.SummariserName,
 	}
 	instruction, err := loadInstruction(varMapping)
 	if err != nil {
@@ -90,7 +90,7 @@ func run() error {
 		Instruction: instruction,
 		Tools: []tool.Tool{
 			readChat,
-			agenttool.New(summariser, nil),
+			agenttool.New(summariser_agent, nil),
 		},
 	})
 	if err != nil {

@@ -1,5 +1,5 @@
-// Command frontend serves a small web page that asks the agent to summarise a
-// Twitch channel's chat. It calls a local agent over the ADK REST API, or an
+// Command frontend serves a small web page for chatting with the agent and
+// asking it to summarise a Twitch channel's chat. It calls a local agent over the ADK REST API, or an
 // Agent Engine deployment when AGENT_ENGINE_ID is set.
 package main
 
@@ -31,8 +31,14 @@ type summariseRequest struct {
 	Stored bool `json:"stored"`
 }
 
-type summariseResponse struct {
+type chatRequest struct {
+	Message   string `json:"message"`
+	SessionID string `json:"sessionId"`
+}
+
+type agentResponse struct {
 	Reply     string `json:"reply,omitempty"`
+	Summary   string `json:"summary,omitempty"`
 	SessionID string `json:"sessionId,omitempty"`
 	Error     string `json:"error,omitempty"`
 }
@@ -57,6 +63,7 @@ func run() error {
 	mux := http.NewServeMux()
 	mux.Handle("GET /", http.FileServerFS(staticFS))
 	mux.HandleFunc("POST /api/summarise", summariseHandler(client))
+	mux.HandleFunc("POST /api/chat", chatHandler(client))
 
 	addr := firstNonEmpty(os.Getenv("FRONTEND_ADDR"), ":8090")
 	log.Printf("frontend listening on http://localhost%s", addr)
@@ -81,18 +88,45 @@ func newClient(ctx context.Context) (AgentClient, error) {
 func summariseHandler(client AgentClient) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req summariseRequest
-		if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(&req); err != nil {
-			writeJSON(w, http.StatusBadRequest, summariseResponse{Error: "invalid request: " + err.Error()})
+		if !decodeJSON(w, r, &req) {
 			return
 		}
-		reply, sessionID, err := client.Summarise(r.Context(), "web-user", req.SessionID, buildMessage(req))
-		if err != nil {
-			log.Printf("summarise: %v", err)
-			writeJSON(w, http.StatusBadGateway, summariseResponse{SessionID: sessionID, Error: err.Error()})
-			return
-		}
-		writeJSON(w, http.StatusOK, summariseResponse{Reply: reply, SessionID: sessionID})
+		send(w, r, client, req.SessionID, buildMessage(req))
 	}
+}
+
+// chatHandler passes the user's text to the agent as is.
+func chatHandler(client AgentClient) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var req chatRequest
+		if !decodeJSON(w, r, &req) {
+			return
+		}
+		msg := strings.TrimSpace(req.Message)
+		if msg == "" {
+			writeJSON(w, http.StatusBadRequest, agentResponse{Error: "message is empty"})
+			return
+		}
+		send(w, r, client, req.SessionID, msg)
+	}
+}
+
+func decodeJSON(w http.ResponseWriter, r *http.Request, v any) bool {
+	if err := json.NewDecoder(http.MaxBytesReader(w, r.Body, 1<<16)).Decode(v); err != nil {
+		writeJSON(w, http.StatusBadRequest, agentResponse{Error: "invalid request: " + err.Error()})
+		return false
+	}
+	return true
+}
+
+func send(w http.ResponseWriter, r *http.Request, client AgentClient, sessionID, message string) {
+	reply, sessionID, err := client.Send(r.Context(), "web-user", sessionID, message)
+	if err != nil {
+		log.Printf("send: %v", err)
+		writeJSON(w, http.StatusBadGateway, agentResponse{Summary: reply.Summary, SessionID: sessionID, Error: err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, agentResponse{Reply: reply.Text, Summary: reply.Summary, SessionID: sessionID})
 }
 
 func buildMessage(req summariseRequest) string {

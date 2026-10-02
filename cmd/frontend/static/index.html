@@ -17,13 +17,16 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, sans-serif; }
-  main { max-width: 720px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; min-height: 100vh; }
+  main { max-width: 1200px; margin: 0 auto; padding: 24px 16px; display: flex; flex-direction: column; gap: 16px; height: 100vh; }
   h1 { font-size: 20px; margin: 0; }
-  form { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  h2 { font-size: 15px; margin: 0; }
+  form { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+  #summary-form { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
   label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
   label.grow { flex: 1 1 180px; }
-  input { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; width: 100%; }
+  input, textarea { font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; width: 100%; }
   input[type=number] { width: 110px; }
+  textarea { flex: 1; resize: none; height: 42px; }
   button { font: inherit; font-weight: 600; color: #fff; background: var(--accent); border: 0; border-radius: 6px; padding: 9px 16px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
   button.secondary { color: var(--accent); background: transparent; border: 1px solid var(--accent); }
   button:disabled { opacity: .6; cursor: progress; }
@@ -31,29 +34,57 @@
   button.busy .spinner { display: inline-block; }
   button.secondary .spinner { border-color: color-mix(in srgb, var(--accent) 40%, transparent); border-top-color: var(--accent); }
   @keyframes spin { to { transform: rotate(360deg); } }
-  #log { flex: 1; display: flex; flex-direction: column; gap: 10px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; overflow-y: auto; min-height: 240px; }
-  #log:empty::before { content: "Pick a channel and press Summarise chat."; color: var(--muted); }
+
+  .panes { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .pane { display: flex; flex-direction: column; gap: 12px; min-height: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .scroll { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+  #log:empty::before { content: "Type a message to the agent, or use Summarise chat above."; color: var(--muted); }
+  #summaries:empty::before { content: "No summary yet. Summaries from either the buttons or the chat show up here."; color: var(--muted); }
+  #chat-form { flex-wrap: nowrap; }
   .msg { max-width: 85%; padding: 8px 12px; border-radius: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .msg b { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
+  .msg b, .summary small { display: block; font-size: 12px; color: var(--muted); font-weight: 600; }
   .you { align-self: flex-end; background: var(--you); }
   .agent { align-self: flex-start; background: var(--agent); }
   .error { color: var(--err); }
+  .summary { padding: 10px 12px; border-radius: 10px; background: var(--agent); white-space: pre-wrap; overflow-wrap: anywhere; }
+  .summary:first-child { background: var(--you); font-size: 16px; }
+
+  @media (max-width: 800px) {
+    main { height: auto; min-height: 100vh; }
+    .panes { grid-template-columns: 1fr; }
+    .pane { min-height: 360px; }
+  }
 </style>
 </head>
 <body>
 <main>
   <h1>Twitch chat summary</h1>
-  <form id="form">
+  <form id="summary-form">
     <label class="grow">Channel <input id="channel" placeholder="default channel" autocomplete="off"></label>
     <label>Seconds <input id="seconds" type="number" min="1" max="60" value="30"></label>
     <label>Max messages <input id="messages" type="number" min="1" max="300" value="100"></label>
     <button id="go" type="submit"><span class="spinner"></span>Summarise chat</button>
-    <button id="stored" type="button" class="secondary" title="Channel is the stored file name, e.g. random_chat.txt"><span class="spinner"></span>Summarise stored chat</button>
+    <button id="stored" type="button" class="secondary" title="Channel is the stored file name, e.g. artosis.txt"><span class="spinner"></span>Summarise stored chat</button>
   </form>
-  <div id="log" aria-live="polite"></div>
+  <div class="panes">
+    <section class="pane">
+      <h2>Chat with the agent</h2>
+      <div id="log" class="scroll" aria-live="polite"></div>
+      <form id="chat-form">
+        <textarea id="text" placeholder="Message the agent (Enter to send, Shift+Enter for a new line)" aria-label="Message"></textarea>
+        <button id="send" type="submit"><span class="spinner"></span>Send</button>
+      </form>
+    </section>
+    <section class="pane">
+      <h2>Summary</h2>
+      <div id="summaries" class="scroll" aria-live="polite"></div>
+    </section>
+  </div>
 </main>
 <script>
   const $ = (id) => document.getElementById(id);
+  const buttons = ["go", "stored", "send"].map($);
+  // One session for both panes, so chat can follow up on a summary.
   let sessionId = "";
 
   function add(who, text, cls) {
@@ -66,38 +97,74 @@
     $("log").scrollTop = $("log").scrollHeight;
   }
 
-  async function summarise(stored, button) {
-    const channel = $("channel").value.trim();
-    const seconds = Math.min(60, Math.max(1, parseInt($("seconds").value, 10) || 30));
-    const messages = Math.min(300, Math.max(1, parseInt($("messages").value, 10) || 100));
-    add("you", stored
-      ? `Summarise stored chat ${channel || "(default)"} (${messages} messages)`
-      : `Summarise ${channel || "the default channel"} (${seconds}s / ${messages} messages)`, "you");
-    $("go").disabled = $("stored").disabled = true;
+  // Newest first, so the latest summary stays at the top.
+  function addSummary(text, label) {
+    const div = document.createElement("div");
+    div.className = "summary";
+    const meta = document.createElement("small");
+    meta.textContent = `${new Date().toLocaleTimeString()} · ${label}`;
+    div.append(meta, document.createTextNode(text));
+    $("summaries").prepend(div);
+    $("summaries").scrollTop = 0;
+  }
+
+  // Runs one agent request. Only one runs at a time, since both panes share
+  // the session.
+  async function call(path, body, label, button) {
+    add("you", label, "you");
+    buttons.forEach((b) => (b.disabled = true));
     button.classList.add("busy");
     try {
-      const res = await fetch("/api/summarise", {
+      const res = await fetch(path, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel, seconds, messages, sessionId, stored }),
+        body: JSON.stringify({ ...body, sessionId }),
       });
       const data = await res.json();
       if (data.sessionId) sessionId = data.sessionId;
+      if (data.summary) addSummary(data.summary, label);
       if (!res.ok || data.error) throw new Error(data.error || res.statusText);
       add("agent", data.reply, "agent");
     } catch (err) {
       add("agent", "Error: " + err.message, "agent error");
     } finally {
-      $("go").disabled = $("stored").disabled = false;
+      buttons.forEach((b) => (b.disabled = false));
       button.classList.remove("busy");
     }
   }
 
-  $("form").addEventListener("submit", (e) => {
+  function summarise(stored, button) {
+    const channel = $("channel").value.trim();
+    const seconds = Math.min(60, Math.max(1, parseInt($("seconds").value, 10) || 30));
+    const messages = Math.min(300, Math.max(1, parseInt($("messages").value, 10) || 100));
+    const label = stored
+      ? `Summarise stored chat ${channel || "(default)"} (${messages} messages)`
+      : `Summarise ${channel || "the default channel"} (${seconds}s / ${messages} messages)`;
+    call("/api/summarise", { channel, seconds, messages, stored }, label, button);
+  }
+
+  function sendChat() {
+    const message = $("text").value.trim();
+    if (!message || $("send").disabled) return;
+    $("text").value = "";
+    call("/api/chat", { message }, message, $("send"));
+  }
+
+  $("summary-form").addEventListener("submit", (e) => {
     e.preventDefault();
     summarise(false, $("go"));
   });
   $("stored").addEventListener("click", () => summarise(true, $("stored")));
+  $("chat-form").addEventListener("submit", (e) => {
+    e.preventDefault();
+    sendChat();
+  });
+  $("text").addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      sendChat();
+    }
+  });
 </script>
 </body>
 </html>

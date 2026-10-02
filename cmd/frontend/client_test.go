@@ -40,8 +40,33 @@ func TestBuildMessage(t *testing.T) {
 }
 
 func TestBuildMessageStored(t *testing.T) {
-	got := buildMessage(summariseRequest{Channel: "random_chat.txt", Seconds: 20, Messages: 50, Stored: true})
-	if want := "Summarise the Twitch chat from the stored messages (source: stored) in random_chat.txt, up to 50 messages."; got != want {
+	got := buildMessage(summariseRequest{Channel: "artosis.txt", Seconds: 20, Messages: 50, Stored: true})
+	if want := "Summarise the Twitch chat from the stored messages (source: stored) in artosis.txt, up to 50 messages."; got != want {
 		t.Errorf("got %q, want %q", got, want)
+	}
+}
+
+func TestLastSummary(t *testing.T) {
+	for name, stream := range map[string]string{
+		"adk rest": `{"author":"twitch_chat_agent","content":{"parts":[{"functionResponse":{"name":"chat_summariser","response":{"result":"old"}}}]}}
+{"author":"twitch_chat_agent","content":{"parts":[{"functionResponse":{"name":"read_twitch_chat","response":{"count":3}}}]}}
+{"author":"twitch_chat_agent","content":{"parts":[{"functionResponse":{"name":"chat_summariser","response":{"result":" Chat loves the build. "}}}]}}
+{"author":"twitch_chat_agent","content":{"parts":[{"text":"Chat loves the build."}]}}`,
+		"agent engine": `{"author":"twitch_chat_agent","content":{"parts":[{"function_response":{"name":"chat_summariser","response":{"result":"Chat loves the build."}}}]}}`,
+	} {
+		events, err := readEventStream(strings.NewReader(stream))
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if got := lastSummary(events); got != "Chat loves the build." {
+			t.Errorf("%s: summary = %q", name, got)
+		}
+	}
+}
+
+func TestLastSummaryNone(t *testing.T) {
+	events, _ := readEventStream(strings.NewReader(`{"author":"twitch_chat_agent","content":{"parts":[{"text":"hi"}]}}`))
+	if got := lastSummary(events); got != "" {
+		t.Errorf("summary = %q, want empty", got)
 	}
 }

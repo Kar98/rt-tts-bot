@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sort"
 	"strings"
 	"time"
@@ -71,7 +72,7 @@ func NewReadChatTool(sources map[string]twitchchat.Source, defaultChannel string
 
 // readChat does the work of the tool. Failures are reported in the result so
 // the agent can relay them to the user.
-func readChat(ctx context.Context, state session.State, sources map[string]twitchchat.Source, defaultChannel string, args ReadChatArgs) ReadChatResult {
+func readChat(ctx context.Context, state session.State, sources map[string]twitchchat.Source, defaultChannel string, args ReadChatArgs) (res ReadChatResult) {
 	channel := twitchchat.NormaliseChannel(args.Channel)
 	if channel == "" {
 		channel = twitchchat.NormaliseChannel(defaultChannel)
@@ -80,15 +81,25 @@ func readChat(ctx context.Context, state session.State, sources map[string]twitc
 	if sourceName == "" {
 		sourceName = defaultSource
 	}
-	res := ReadChatResult{Channel: channel, Source: sourceName}
+	res = ReadChatResult{Channel: channel, Source: sourceName}
+
+	// Every failure below sets err and returns. Assign with = not :=, or the
+	// shadowed err never reaches this.
+	var err error
+	defer func() {
+		if err != nil {
+			slog.Error("read_twitch_chat: failed", "channel", channel, "source", sourceName, "err", err)
+			res.Error = err.Error()
+		}
+	}()
 
 	if channel == "" {
-		res.Error = "no channel given and no default channel is configured"
+		err = errors.New("no channel given and no default channel is configured")
 		return res
 	}
 	src, ok := sources[sourceName]
 	if !ok {
-		res.Error = fmt.Sprintf("unknown source %q", sourceName)
+		err = fmt.Errorf("unknown source %q", sourceName)
 		return res
 	}
 
@@ -98,22 +109,23 @@ func readChat(ctx context.Context, state session.State, sources map[string]twitc
 		MaxMessages: clamp(args.MaxMessages, defaultMaxMessages, 1, maxMaxMessages),
 	}
 	start := time.Now()
-	msgs, err := src.Fetch(ctx, req)
+	var msgs []twitchchat.Message
+	msgs, err = src.Fetch(ctx, req)
 	res.DurationSeconds = time.Since(start).Round(100 * time.Millisecond).Seconds()
 	if errors.Is(err, twitchchat.ErrNotImplemented) {
-		res.Error = fmt.Sprintf("the %q source is not implemented yet", sourceName)
+		err = fmt.Errorf("the %q source is not implemented yet", sourceName)
 		return res
 	}
 	if err != nil {
-		res.Error = err.Error()
 		return res
 	}
 
-	if err := state.Set(TranscriptStateKey, twitchchat.FormatTranscript(msgs)); err != nil {
-		res.Error = fmt.Sprintf("saving transcript: %v", err)
+	if err = state.Set(TranscriptStateKey, twitchchat.FormatTranscript(msgs)); err != nil {
+		err = fmt.Errorf("saving transcript: %w", err)
 		return res
 	}
 	res.Count = len(msgs)
+	slog.Info("read_twitch_chat: read messages", "count", res.Count, "channel", channel, "source", sourceName, "duration_seconds", res.DurationSeconds)
 	return res
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -16,19 +17,46 @@ import (
 	"google.golang.org/genai"
 )
 
-// AgentClient sends a message to the agent and returns its final reply. An
-// empty sessionID starts a new session; the session used is returned.
+// AgentClient sends a message to the agent and returns its reply. An empty
+// sessionID starts a new session; the session used is returned.
 type AgentClient interface {
-	Summarise(ctx context.Context, userID, sessionID, message string) (reply, newSessionID string, err error)
+	Send(ctx context.Context, userID, sessionID, message string) (reply Reply, newSessionID string, err error)
 }
 
-// event is the subset of an ADK event the frontend reads. Both the ADK REST
-// API (camelCase) and Agent Engine (snake_case) use these field names.
+// Reply is what the frontend shows for one agent run.
+type Reply struct {
+	Text string
+	// Summary is the chat_summariser output, if the agent called it this run.
+	Summary string
+}
+
+// summariserName is the chat_summariser tool name, agents.SummariserName.
+const summariserName = "chat_summariser"
+
+// event is the subset of an ADK event the frontend reads. The ADK REST API
+// uses camelCase and Agent Engine snake_case; the top-level names are the same
+// in both.
 type event struct {
-	Author  string         `json:"author"`
-	Partial bool           `json:"partial"`
-	Content *genai.Content `json:"content"`
-	Error   string         `json:"error"`
+	Author  string `json:"author"`
+	Partial bool   `json:"partial"`
+	Content *struct {
+		Parts []part `json:"parts"`
+	} `json:"content"`
+	Error string `json:"error"`
+}
+
+// part is a genai.Part cut down to what we read. genai.Part only decodes
+// camelCase, so Agent Engine's function_response needs its own field.
+type part struct {
+	Text                  string            `json:"text"`
+	Thought               bool              `json:"thought"`
+	FunctionResponse      *functionResponse `json:"functionResponse"`
+	FunctionResponseSnake *functionResponse `json:"function_response"`
+}
+
+type functionResponse struct {
+	Name     string         `json:"name"`
+	Response map[string]any `json:"response"`
 }
 
 func (e event) text() string {
@@ -37,7 +65,7 @@ func (e event) text() string {
 	}
 	var b strings.Builder
 	for _, p := range e.Content.Parts {
-		if p != nil && !p.Thought {
+		if !p.Thought {
 			b.WriteString(p.Text)
 		}
 	}
@@ -60,6 +88,32 @@ func finalReply(events []event, author string) (string, error) {
 	return "", errors.New("agent returned no reply")
 }
 
+// lastSummary returns the result of the last chat_summariser call, or "".
+// agenttool returns the sub-agent's text as {"result": text}.
+func lastSummary(events []event) string {
+	for i := len(events) - 1; i >= 0; i-- {
+		if events[i].Content == nil {
+			continue
+		}
+		parts := events[i].Content.Parts
+		for j := len(parts) - 1; j >= 0; j-- {
+			fr := cmp.Or(parts[j].FunctionResponse, parts[j].FunctionResponseSnake)
+			if fr == nil || fr.Name != summariserName {
+				continue
+			}
+			if s, ok := fr.Response["result"].(string); ok {
+				return strings.TrimSpace(s)
+			}
+		}
+	}
+	return ""
+}
+
+func parseReply(events []event, author string) (Reply, error) {
+	text, err := finalReply(events, author)
+	return Reply{Text: text, Summary: lastSummary(events)}, err
+}
+
 // adkrestClient talks to a local agent started with "web api".
 type adkrestClient struct {
 	base    string
@@ -67,14 +121,14 @@ type adkrestClient struct {
 	http    *http.Client
 }
 
-func (c *adkrestClient) Summarise(ctx context.Context, userID, sessionID, message string) (string, string, error) {
+func (c *adkrestClient) Send(ctx context.Context, userID, sessionID, message string) (Reply, string, error) {
 	if sessionID == "" {
 		var sess struct {
 			ID string `json:"id"`
 		}
 		u := fmt.Sprintf("%s/apps/%s/users/%s/sessions", c.base, url.PathEscape(c.appName), url.PathEscape(userID))
 		if err := postJSON(ctx, c.http, u, map[string]any{}, &sess); err != nil {
-			return "", "", fmt.Errorf("create session: %w", err)
+			return Reply{}, "", fmt.Errorf("create session: %w", err)
 		}
 		sessionID = sess.ID
 	}
@@ -87,9 +141,9 @@ func (c *adkrestClient) Summarise(ctx context.Context, userID, sessionID, messag
 		"newMessage": genai.NewContentFromText(message, genai.RoleUser),
 	}, &events)
 	if err != nil {
-		return "", sessionID, fmt.Errorf("run: %w", err)
+		return Reply{}, sessionID, fmt.Errorf("run: %w", err)
 	}
-	reply, err := finalReply(events, c.appName)
+	reply, err := parseReply(events, c.appName)
 	return reply, sessionID, err
 }
 
@@ -112,7 +166,7 @@ func newAgentEngineClient(ctx context.Context, project, location, id, appName st
 	}, nil
 }
 
-func (c *agentEngineClient) Summarise(ctx context.Context, userID, sessionID, message string) (string, string, error) {
+func (c *agentEngineClient) Send(ctx context.Context, userID, sessionID, message string) (Reply, string, error) {
 	if sessionID == "" {
 		var resp struct {
 			Output struct {
@@ -124,7 +178,7 @@ func (c *agentEngineClient) Summarise(ctx context.Context, userID, sessionID, me
 			"input":        map[string]any{"user_id": userID},
 		}, &resp)
 		if err != nil {
-			return "", "", fmt.Errorf("create session: %w", err)
+			return Reply{}, "", fmt.Errorf("create session: %w", err)
 		}
 		sessionID = resp.Output.ID
 	}
@@ -138,28 +192,28 @@ func (c *agentEngineClient) Summarise(ctx context.Context, userID, sessionID, me
 		},
 	})
 	if err != nil {
-		return "", sessionID, err
+		return Reply{}, sessionID, err
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.base+":streamQuery?alt=sse", bytes.NewReader(body))
 	if err != nil {
-		return "", sessionID, err
+		return Reply{}, sessionID, err
 	}
 	req.Header.Set("Content-Type", "application/json")
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return "", sessionID, fmt.Errorf("stream query: %w", err)
+		return Reply{}, sessionID, fmt.Errorf("stream query: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		b, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return "", sessionID, fmt.Errorf("stream query: %s: %s", resp.Status, b)
+		return Reply{}, sessionID, fmt.Errorf("stream query: %s: %s", resp.Status, b)
 	}
 
 	events, err := readEventStream(resp.Body)
 	if err != nil {
-		return "", sessionID, fmt.Errorf("stream query: %w", err)
+		return Reply{}, sessionID, fmt.Errorf("stream query: %w", err)
 	}
-	reply, err := finalReply(events, c.appName)
+	reply, err := parseReply(events, c.appName)
 	return reply, sessionID, err
 }
 
