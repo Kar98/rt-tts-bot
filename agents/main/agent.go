@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"go.opentelemetry.io/otel/sdk/resource"
 	semconv "go.opentelemetry.io/otel/semconv/v1.36.0"
@@ -26,6 +25,7 @@ import (
 
 	"github.com/Kar98/artosis-tts-agent/internal/agents/summariser"
 	"github.com/Kar98/artosis-tts-agent/internal/observability"
+	"github.com/Kar98/artosis-tts-agent/internal/prompt"
 	"github.com/Kar98/artosis-tts-agent/internal/tools"
 	"github.com/Kar98/artosis-tts-agent/internal/twitchchat"
 )
@@ -75,22 +75,20 @@ func run() error {
 		return fmt.Errorf("failed to create summariser: %w", err)
 	}
 
-	varMapping := map[string]string{
-		"tools.ReadChatToolName":    tools.ReadChatToolName,
-		"summariser.SummariserName": summariser.SummariserName,
-	}
-	instruction, err := loadInstruction(varMapping)
+	dono_tool, err := tools.NewTTSEvaluatorTool()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create NewTTSEvaluatorTool: %w", err)
 	}
+
 	mainAgent, err := llmagent.New(llmagent.Config{
 		Name:        agentName,
 		Model:       model,
 		Description: "Reads a Twitch channel's chat and summarises it.",
-		Instruction: instruction,
+		Instruction: prompt.Render(instructionTemplate, instructionVars),
 		Tools: []tool.Tool{
 			readChat,
 			agenttool.New(summariser_agent, nil),
+			dono_tool,
 		},
 	})
 	if err != nil {
@@ -134,13 +132,11 @@ func run() error {
 //go:embed instruction.md
 var instructionTemplate string
 
-func loadInstruction(mappings map[string]string) (string, error) {
-	tostr := instructionTemplate
-	for k, v := range mappings {
-		keytoreplace := "{" + k + "}"
-		tostr = strings.ReplaceAll(tostr, keytoreplace, v)
-	}
-	return tostr, nil
+// instructionVars fills the <placeholders> in instruction.md.
+var instructionVars = map[string]string{
+	"tools.ReadChatToolName":     tools.ReadChatToolName,
+	"summariser.SummariserName":  summariser.SummariserName,
+	"tools.TTSEvaluatorToolname": tools.TTSEvaluatorToolname,
 }
 
 func firstNonEmpty(vals ...string) string {

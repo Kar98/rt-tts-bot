@@ -4,15 +4,14 @@ import (
 	"testing"
 
 	assert "github.com/stretchr/testify/assert"
+
+	"github.com/Kar98/artosis-tts-agent/internal/prompt"
 )
 
-func TestInstructionLoading(t *testing.T) {
-	mappings := map[string]string{"tools.ReadChatToolName": "UNIQUE_111", "agents.SummariserName": "UNIQUE_222"}
-	instructions, err := loadInstruction(mappings)
-	assert.NoError(t, err)
-	assert.Contains(t, instructions, "UNIQUE_111")
-	assert.Contains(t, instructions, "UNIQUE_222")
+func TestInstructionPlaceholdersFilled(t *testing.T) {
+	instructions := prompt.Render(instructionTemplate, instructionVars)
+	assert.NotContains(t, instructions, "<")
+	assert.NotContains(t, instructions, ">")
 	assert.NotContains(t, instructions, "{")
 	assert.NotContains(t, instructions, "}")
-
 }

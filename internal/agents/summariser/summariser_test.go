@@ -6,6 +6,9 @@ import (
 	"unicode/utf8"
 
 	"google.golang.org/genai"
+
+	"github.com/Kar98/artosis-tts-agent/internal/prompt"
+	"github.com/Kar98/artosis-tts-agent/internal/tools"
 )
 
 func TestTruncateRunes(t *testing.T) {
@@ -57,5 +60,15 @@ func TestLimitTextNoText(t *testing.T) {
 	limitText(c, 10)
 	if len(c.Parts) != 1 || c.Parts[0].FunctionCall == nil {
 		t.Errorf("non-text parts should be unchanged: %+v", c.Parts)
+	}
+}
+
+func TestInstructionPlaceholdersFilled(t *testing.T) {
+	got := prompt.Render(instructionTemplate, instructionVars)
+	if !strings.Contains(got, "{"+tools.TranscriptStateKey+"?}") {
+		t.Errorf("instruction missing state placeholder {%s?}:\n%s", tools.TranscriptStateKey, got)
+	}
+	if strings.ContainsAny(got, "<>") {
+		t.Errorf("instruction has unfilled <placeholder>:\n%s", got)
 	}
 }

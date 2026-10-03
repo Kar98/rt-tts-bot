@@ -2,6 +2,7 @@
 package summariser
 
 import (
+	_ "embed"
 	"log"
 	"strings"
 
@@ -11,6 +12,7 @@ import (
 	"google.golang.org/adk/v2/agent/llmagent"
 	"google.golang.org/adk/v2/model"
 
+	"github.com/Kar98/artosis-tts-agent/internal/prompt"
 	"github.com/Kar98/artosis-tts-agent/internal/tools"
 )
 
@@ -20,26 +22,24 @@ const SummariserName = "chat_summariser"
 // MaxSummaryRunes is the hard limit on the summary length.
 const MaxSummaryRunes = 300
 
-const summariserInstruction = `You summarise Twitch chat.
+//go:embed instruction.md
+var instructionTemplate string
 
-Summarise the chat transcript below in at most 300 characters. Cover the main
-topics, any questions viewers asked, and the overall mood. Reply with the
-summary only: no preamble, no quotes, no markdown.
-
-Transcript (one message per line, "[time] user: text"):
-{` + tools.TranscriptStateKey + `?}`
+// instructionVars fills the <placeholders> in instruction.md. The rendered
+// {chat_transcript?} is left for ADK to fill from session state.
+var instructionVars = map[string]string{
+	"tools.TranscriptStateKey": tools.TranscriptStateKey,
+}
 
 // NewSummariser returns the chat_summariser agent. It reads the transcript that
 // read_twitch_chat stored in session state, and its output is truncated to
 // MaxSummaryRunes even if the model ignores the instruction.
 func NewSummariser(m model.LLM) (agent.Agent, error) {
-	// get the instructions from the .md file and load them in here.
-	// summariserInstruction := ""
 	return llmagent.New(llmagent.Config{
 		Name:        SummariserName,
 		Model:       m,
 		Description: "Summarises the Twitch chat saved by read_twitch_chat in at most 300 characters.",
-		Instruction: summariserInstruction,
+		Instruction: prompt.Render(instructionTemplate, instructionVars),
 		BeforeModelCallbacks: []llmagent.BeforeModelCallback{
 			func(ctx agent.Context, llmRequest *model.LLMRequest) (*model.LLMResponse, error) {
 				if llmRequest == nil {
