@@ -52,6 +52,9 @@ func TestReadChatDefaults(t *testing.T) {
 	if got, _ := state[TranscriptStateKey].(string); !strings.Contains(got, "a: hi") {
 		t.Errorf("transcript = %q", got)
 	}
+	if got, _ := state[MessagesStateKey].([]string); len(got) != 1 || got[0] != "hi" {
+		t.Errorf("messages = %q", got)
+	}
 }
 
 func TestReadChatClamps(t *testing.T) {

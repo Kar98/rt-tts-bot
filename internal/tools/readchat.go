@@ -22,6 +22,10 @@ import (
 // written to. The summariser reads it through its instruction template.
 const TranscriptStateKey = "chat_transcript"
 
+// MessagesStateKey is the session state key the message texts are written to,
+// without user or time. tts_evaluator reads it.
+const MessagesStateKey = "chat_messages"
+
 // ReadChatToolName is the name the model uses to call the tool.
 const ReadChatToolName = "read_twitch_chat"
 
@@ -82,6 +86,7 @@ func readChat(ctx context.Context, state session.State, sources map[string]twitc
 		sourceName = defaultSource
 	}
 	res = ReadChatResult{Channel: channel, Source: sourceName}
+	slog.Info("readChat", "channel", channel, "Source", sourceName)
 
 	// Every failure below sets err and returns. Assign with = not :=, or the
 	// shadowed err never reaches this.
@@ -122,6 +127,14 @@ func readChat(ctx context.Context, state session.State, sources map[string]twitc
 
 	if err = state.Set(TranscriptStateKey, twitchchat.FormatTranscript(msgs)); err != nil {
 		err = fmt.Errorf("saving transcript: %w", err)
+		return res
+	}
+	texts := make([]string, len(msgs))
+	for i, m := range msgs {
+		texts[i] = m.Text
+	}
+	if err = state.Set(MessagesStateKey, texts); err != nil {
+		err = fmt.Errorf("saving messages: %w", err)
 		return res
 	}
 	res.Count = len(msgs)
