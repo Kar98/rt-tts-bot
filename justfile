@@ -64,3 +64,6 @@ gcp-setup langfuse_host public_key secret_key:
 # Deploy to Agent Engine. Pass the Agent Engine ID to update an existing deployment.
 deploy id="":
     adkgo deploy agentengine -p {{project}} -r {{region}} -s {{service}} -e ./agents/main {{ if id != "" { "--agent_engine_id " + id } else { "" } }}
+
+convert:
+    go run ./helper_tools/newline_remover.go

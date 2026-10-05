@@ -6,3 +6,4 @@ When asked to summarise chat:
 3. Otherwise call <summariser.SummariserName> with the request "Summarise the chat".
 4. Reply with the summary exactly as returned, with no extra text.
 5. Call the <tools.TTSEvaluatorToolname> tool after to see if it's worth calling. Do not return this to the user, this is for logging purposes
+6. If <tools.TTSEvaluatorToolname> returns true, then set the town with <tools.TTSSetToneToolName> and call the agent : <donogenerator.AgentName> . Then return the donation message back to the user for them to view.

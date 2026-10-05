@@ -4,7 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"reflect"
 
+	"github.com/google/jsonschema-go/jsonschema"
 	"google.golang.org/adk/v2/agent"
 	"google.golang.org/adk/v2/session"
 	"google.golang.org/adk/v2/tool"
@@ -21,7 +23,27 @@ type TTSEvaluatorResult struct {
 	Error  string `json:"error,omitempty"`
 }
 
+type TTSSetToneArgs struct {
+	Tone Tone `json:"tone" jsonschema:"the tone of the chat"`
+}
+type TTSSetResult struct {
+	Error string `json:"error,omitempty"`
+}
+
+type Tone string
+
+const (
+	ToneHumour   Tone = "humour"
+	ToneRandom   Tone = "random"
+	ToneGross    Tone = "gross"
+	TonePureSpam Tone = "pure_spam"
+	ToneQuestion Tone = "question"
+	ToneSong     Tone = "song"
+)
+
 const TTSEvaluatorToolname = "tts_evaluator"
+const TTSSetToneToolName = "set_tone"
+const TTSSetToneKey = "tone"
 
 func NewTTSEvaluatorTool() (tool.Tool, error) {
 	return functiontool.New(functiontool.Config{
@@ -30,6 +52,30 @@ func NewTTSEvaluatorTool() (tool.Tool, error) {
 			"of the messages saved by " + ReadChatToolName + ". Takes no arguments.",
 	}, func(ctx agent.Context, _ TTSEvaluatorArgs) (TTSEvaluatorResult, error) {
 		return evaluate(ctx.State()), nil
+	})
+}
+
+func NewSetToneTool() (tool.Tool, error) {
+	toneValues := []any{ToneHumour, ToneRandom, ToneGross, TonePureSpam, ToneQuestion, ToneSong}
+	schema, err := jsonschema.For[TTSSetToneArgs](&jsonschema.ForOptions{
+		TypeSchemas: map[reflect.Type]*jsonschema.Schema{
+			reflect.TypeFor[Tone](): {Type: "string", Enum: toneValues},
+		},
+	})
+	if err != nil {
+		return nil, err
+	}
+	return functiontool.New(functiontool.Config{
+		Name:        TTSSetToneToolName,
+		Description: "The purpose of this tool is to set the tone in the agent context so other agents can understand the underlying intention",
+		InputSchema: schema,
+	}, func(ctx agent.Context, args TTSSetToneArgs) (TTSSetResult, error) {
+		if args.Tone == "" {
+			return TTSSetResult{Error: "tone was blank"}, nil
+		}
+		ctx.State().Set(TTSSetToneKey, args.Tone)
+		slog.Info("NewSetToneTool", "tone", args.Tone)
+		return TTSSetResult{}, nil
 	})
 }
 

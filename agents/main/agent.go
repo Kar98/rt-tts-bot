@@ -23,6 +23,7 @@ import (
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/agenttool"
 
+	donogenerator "github.com/Kar98/artosis-tts-agent/internal/agents/dono_generator"
 	"github.com/Kar98/artosis-tts-agent/internal/agents/summariser"
 	"github.com/Kar98/artosis-tts-agent/internal/observability"
 	"github.com/Kar98/artosis-tts-agent/internal/prompt"
@@ -75,7 +76,17 @@ func run() error {
 		return fmt.Errorf("failed to create summariser: %w", err)
 	}
 
+	dono_generator_agent, err := donogenerator.NewSummariser(model)
+	if err != nil {
+		return fmt.Errorf("failed to create summariser: %w", err)
+	}
+
 	dono_tool, err := tools.NewTTSEvaluatorTool()
+	if err != nil {
+		return fmt.Errorf("failed to create NewTTSEvaluatorTool: %w", err)
+	}
+
+	set_tone_tool, err := tools.NewSetToneTool()
 	if err != nil {
 		return fmt.Errorf("failed to create NewTTSEvaluatorTool: %w", err)
 	}
@@ -89,6 +100,8 @@ func run() error {
 			readChat,
 			agenttool.New(summariser_agent, nil),
 			dono_tool,
+			set_tone_tool,
+			agenttool.New(dono_generator_agent, nil),
 		},
 	})
 	if err != nil {
@@ -137,6 +150,8 @@ var instructionVars = map[string]string{
 	"tools.ReadChatToolName":     tools.ReadChatToolName,
 	"summariser.SummariserName":  summariser.SummariserName,
 	"tools.TTSEvaluatorToolname": tools.TTSEvaluatorToolname,
+	"tools.TTSSetToneToolName":   tools.TTSSetToneToolName,
+	"donogenerator.AgentName":    donogenerator.AgentName,
 }
 
 func firstNonEmpty(vals ...string) string {
