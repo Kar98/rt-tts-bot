@@ -1,10 +1,13 @@
 package tools
 
 import (
+	_ "embed"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
 	"reflect"
+	"strings"
 
 	"github.com/google/jsonschema-go/jsonschema"
 	"google.golang.org/adk/v2/agent"
@@ -12,6 +15,9 @@ import (
 	"google.golang.org/adk/v2/tool"
 	"google.golang.org/adk/v2/tool/functiontool"
 )
+
+//go:embed existing_donos.json
+var donoExamples string
 
 // TTSEvaluatorArgs is empty. The model never sees the chat messages, since
 // read_twitch_chat only returns a count, so the tool reads them from session
@@ -27,7 +33,8 @@ type TTSSetToneArgs struct {
 	Tone Tone `json:"tone" jsonschema:"the tone of the chat"`
 }
 type TTSSetResult struct {
-	Error string `json:"error,omitempty"`
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
 }
 
 type Tone string
@@ -43,7 +50,8 @@ const (
 
 const TTSEvaluatorToolname = "tts_evaluator"
 const TTSSetToneToolName = "set_tone"
-const TTSSetToneKey = "tone"
+const TTSSetToneKey = "dono_tone"
+const TTSSetDonoExamples = "dono_examples"
 
 func NewTTSEvaluatorTool() (tool.Tool, error) {
 	return functiontool.New(functiontool.Config{
@@ -65,6 +73,12 @@ func NewSetToneTool() (tool.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
+	var donos map[Tone][]string
+	err = json.Unmarshal([]byte(donoExamples), &donos)
+	if err != nil {
+		return nil, err
+	}
+
 	return functiontool.New(functiontool.Config{
 		Name:        TTSSetToneToolName,
 		Description: "The purpose of this tool is to set the tone in the agent context so other agents can understand the underlying intention",
@@ -75,7 +89,24 @@ func NewSetToneTool() (tool.Tool, error) {
 		}
 		ctx.State().Set(TTSSetToneKey, args.Tone)
 		slog.Info("NewSetToneTool", "tone", args.Tone)
-		return TTSSetResult{}, nil
+		// Set dono examples for next agent to use
+		examples, ok := donos[args.Tone]
+		if !ok {
+			err = fmt.Errorf("no examples for tone %s", args.Tone)
+			return TTSSetResult{Error: err.Error()}, err
+		}
+		var b strings.Builder
+		for _, e := range examples {
+			// one example per line, so the model can tell them apart
+			b.WriteString("- ")
+			b.WriteString(strings.ReplaceAll(e, "\n", " "))
+			b.WriteString("\n")
+		}
+		if err := ctx.State().Set(TTSSetDonoExamples, b.String()); err != nil {
+			return TTSSetResult{Error: err.Error()}, err
+		}
+
+		return TTSSetResult{Status: "set"}, nil
 	})
 }
 
