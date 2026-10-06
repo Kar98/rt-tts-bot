@@ -73,8 +73,7 @@ func NewSetToneTool() (tool.Tool, error) {
 	if err != nil {
 		return nil, err
 	}
-	var donos map[Tone][]string
-	err = json.Unmarshal([]byte(donoExamples), &donos)
+	donos, err := loadDonoExamples()
 	if err != nil {
 		return nil, err
 	}
@@ -90,24 +89,49 @@ func NewSetToneTool() (tool.Tool, error) {
 		ctx.State().Set(TTSSetToneKey, args.Tone)
 		slog.Info("NewSetToneTool", "tone", args.Tone)
 		// Set dono examples for next agent to use
-		examples, ok := donos[args.Tone]
-		if !ok {
-			err = fmt.Errorf("no examples for tone %s", args.Tone)
+		examples, err := formatExamples(donos, args.Tone)
+		if err != nil {
 			return TTSSetResult{Error: err.Error()}, err
 		}
-		var b strings.Builder
-		for _, e := range examples {
-			// one example per line, so the model can tell them apart
-			b.WriteString("- ")
-			b.WriteString(strings.ReplaceAll(e, "\n", " "))
-			b.WriteString("\n")
-		}
-		if err := ctx.State().Set(TTSSetDonoExamples, b.String()); err != nil {
+		if err := ctx.State().Set(TTSSetDonoExamples, examples); err != nil {
 			return TTSSetResult{Error: err.Error()}, err
 		}
 
 		return TTSSetResult{Status: "set"}, nil
 	})
+}
+
+// DonoExamples returns the example donations for tone in the form set_tone
+// writes to state under TTSSetDonoExamples.
+func DonoExamples(tone Tone) (string, error) {
+	donos, err := loadDonoExamples()
+	if err != nil {
+		return "", err
+	}
+	return formatExamples(donos, tone)
+}
+
+func loadDonoExamples() (map[Tone][]string, error) {
+	var donos map[Tone][]string
+	if err := json.Unmarshal([]byte(donoExamples), &donos); err != nil {
+		return nil, err
+	}
+	return donos, nil
+}
+
+func formatExamples(donos map[Tone][]string, tone Tone) (string, error) {
+	examples, ok := donos[tone]
+	if !ok {
+		return "", fmt.Errorf("no examples for tone %s", tone)
+	}
+	var b strings.Builder
+	for _, e := range examples {
+		// one example per line, so the model can tell them apart
+		b.WriteString("- ")
+		b.WriteString(strings.ReplaceAll(e, "\n", " "))
+		b.WriteString("\n")
+	}
+	return b.String(), nil
 }
 
 // evaluate runs isWorthy over the messages read_twitch_chat saved in state.

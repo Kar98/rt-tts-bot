@@ -33,6 +33,14 @@ frontend id="":
 test:
     go test ./...
 
+# Run the dono_generator eval set as a Langfuse experiment. Langfuse evaluators score it afterwards.
+eval-dono:
+    RUN_EVALS=1 go test -run TestDonoEval -count=1 -v ./internal/agents/dono_generator/
+
+# One-time: create the Langfuse evaluators and rule that score eval-dono
+eval-setup:
+    go run ./cmd/dono-eval-setup
+
 # Read real chat from a live channel
 test-network channel="artosis":
     TWITCH_TEST_CHANNEL={{channel}} go test -run Network -v ./internal/twitchchat/

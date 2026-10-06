@@ -50,22 +50,8 @@ var settings = []setting{
 // Manager in project. If Langfuse is not fully configured, it logs a warning
 // and returns nil so the agent still runs.
 func ConfigureLangfuse(ctx context.Context, project string) error {
-	var cfg LangfuseConfig
-	var missing []setting
-	for _, s := range settings {
-		*s.field(&cfg) = strings.TrimSpace(os.Getenv(s.env))
-		if *s.field(&cfg) == "" {
-			missing = append(missing, s)
-		}
-	}
-
-	if len(missing) > 0 && os.Getenv("GOOGLE_CLOUD_AGENT_ENGINE_ID") != "" && project != "" {
-		if err := readSecrets(ctx, project, &cfg, missing); err != nil {
-			log.Printf("WARNING: reading Langfuse secrets: %v", err)
-		}
-	}
-
-	if !cfg.complete() {
+	cfg, ok := LoadLangfuseConfig(ctx, project)
+	if !ok {
 		log.Printf("WARNING: Langfuse is not configured (set LANGFUSE_HOST, LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY); traces will not be sent to Langfuse")
 		return nil
 	}
@@ -80,6 +66,25 @@ func ConfigureLangfuse(ctx context.Context, project string) error {
 	}
 	log.Printf("Langfuse tracing enabled: %s", os.Getenv(envTracesEndpoint))
 	return nil
+}
+
+// LoadLangfuseConfig reads the Langfuse config as ConfigureLangfuse does.
+// ok is false if any value is missing.
+func LoadLangfuseConfig(ctx context.Context, project string) (cfg LangfuseConfig, ok bool) {
+	var missing []setting
+	for _, s := range settings {
+		*s.field(&cfg) = strings.TrimSpace(os.Getenv(s.env))
+		if *s.field(&cfg) == "" {
+			missing = append(missing, s)
+		}
+	}
+
+	if len(missing) > 0 && os.Getenv("GOOGLE_CLOUD_AGENT_ENGINE_ID") != "" && project != "" {
+		if err := readSecrets(ctx, project, &cfg, missing); err != nil {
+			log.Printf("WARNING: reading Langfuse secrets: %v", err)
+		}
+	}
+	return cfg, cfg.complete()
 }
 
 // OTelEnv returns the OTLP exporter env vars for cfg. Only the traces endpoint

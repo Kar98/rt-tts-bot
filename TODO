@@ -1,0 +1,12 @@
+I've switched the dono evals to Langfuse evaluators. One thing to know first: your local Langfuse has no model connection, so the evaluators haven't scored anything yet. Until one is added, a run is recorded but never scored.
+
+How it works now:
+- just eval-dono runs the eval set and sends it to Langfuse as an experiment named with the branch, commit and time, e.g. dono_generator main@d69ce71 2026-10-06T04:04:25Z. The agent model is stored with it. The run fails only if the agent errors, never on a score, so it fits a nightly job. Your local Langfuse 4.48 lists the experiment with all 3 cases, each with the message, chat context and response.
+- just eval-setup is a one-time command that creates the humour_quality, factualness and stream_tone evaluators (scored 1 to 5) and a rule that runs them on this dataset's experiments. It wires each evaluator to the case's message, tone, tone examples, chat context and response, which is the fiddly part in the UI. Rerunning it doesn't create duplicates. I've already run it against your local instance.
+
+The Go judge and the rubric .md files are gone. Each evaluator's prompt is a starter with a TODO where the rubric goes, and you edit it in Langfuse.
+
+What you need to do:
+1. In Langfuse, add a model connection under Settings > LLM Connections. Google Vertex AI or AI Studio both work. Make it the default evaluation model. This needs a credential, so I left it to you.
+2. Enable the "dono_generator experiments" rule. Setup created it switched off because Langfuse won't enable a rule without a model.
+3. Write the three rubrics in the evaluator prompts.
