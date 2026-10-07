@@ -1,6 +1,6 @@
 ---
-name: plan
-description: Write an implementation plan for a feature or change as a Markdown file in .agents/created-plans/, for another coding agent to carry out. Only run when the user types /plan.
+name: create-plan
+description: Write an implementation plan for a feature or change as a Markdown file in .agents/created-plans/, for another coding agent to carry out
 disable-model-invocation: true
 argument-hint: <what to plan>
 ---

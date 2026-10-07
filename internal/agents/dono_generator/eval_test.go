@@ -43,7 +43,7 @@ func TestDonoEval(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	a, err := NewSummariser(m)
+	a, err := NewDonoGenerator(m)
 	if err != nil {
 		t.Fatal(err)
 	}

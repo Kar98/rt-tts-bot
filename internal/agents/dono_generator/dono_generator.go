@@ -20,7 +20,7 @@ var instructionVars = map[string]string{
 const AgentName = "dono_generator"
 const LastDonoMessage = "last_dono_message"
 
-func NewSummariser(m model.LLM) (agent.Agent, error) {
+func NewDonoGenerator(m model.LLM) (agent.Agent, error) {
 
 	agent_instruction := prompt.Render(instructionTemplate, instructionVars)
 	slog.Info("new dono generator")

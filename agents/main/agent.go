@@ -76,7 +76,7 @@ func run() error {
 		return fmt.Errorf("failed to create summariser: %w", err)
 	}
 
-	dono_generator_agent, err := donogenerator.NewSummariser(model)
+	dono_generator_agent, err := donogenerator.NewDonoGenerator(model)
 	if err != nil {
 		return fmt.Errorf("failed to create summariser: %w", err)
 	}
