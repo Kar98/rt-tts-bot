@@ -33,13 +33,14 @@ frontend id="":
 test:
     go test ./...
 
-# Run the dono_generator eval set as a Langfuse experiment. Langfuse evaluators score it afterwards.
+# Run and score the dono_generator eval set. Results go to internal/agents/dono_generator/.adk/eval_history.
+# EVAL_PARALLELISM sets how many cases run at once (default 4).
 eval-dono:
     RUN_EVALS=1 go test -run TestDonoEval -count=1 -v ./internal/agents/dono_generator/
 
-# One-time: create the Langfuse evaluators and rule that score eval-dono
-eval-setup:
-    go run ./cmd/dono-eval-setup
+# Upload an eval result file to Langfuse. Without a file, uploads the newest dono_generator result.
+eval-upload file="":
+    go run ./cmd/eval-upload {{ if file != "" { "-file " + file } else { "" } }}
 
 # Read real chat from a live channel
 test-network channel="artosis":

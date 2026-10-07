@@ -1,0 +1,14 @@
+{
+  "criteria": {
+    "tool_trajectory_avg_score": {"threshold": 1.0, "match_type": "IN_ORDER", "ignore_args": true},
+    "rubric_based_final_response_quality_v1": {
+      "threshold": 0.6,
+      "include_intermediate_responses_in_final": false,
+      "judge_model_options": {"judge_model": "judge-a", "num_samples": 3, "parallelism_limit": 2, "judge_model_config": {"temperature": 0}},
+      "rubrics": [{"rubric_id": "funny", "rubric_content": {"text_property": "The message is funny."}}]
+    },
+    "rubric_based_tool_use_quality_v1": 0.5,
+    "rubric_based_multi_turn_trajectory_quality_v1": {"threshold": 0.7, "rubrics": [{"rubric_id": "polite", "rubric_content": {"text_property": "The agent is polite."}}]}
+  },
+  "user_simulator_config": {"type": "llm_backed"}
+}

@@ -1,0 +1,21 @@
+{
+  "eval_set_id": "events",
+  "eval_cases": [
+    {
+      "eval_id": "c1",
+      "conversation": [
+        {
+          "user_content": {"role": "user", "parts": [{"text": "Weather in SF?"}]},
+          "intermediate_data": {
+            "invocation_events": [
+              {"author": "weather_agent", "content": {"role": "model", "parts": [{"function_call": {"id": "fc1", "name": "get_weather", "args": {"city_name": "SF"}}}]}},
+              {"author": "weather_agent", "content": {"role": "user", "parts": [{"function_response": {"id": "fc1", "name": "get_weather", "response": {"temp_c": 18}}}]}},
+              {"author": "weather_agent", "content": null, "usage_metadata": {"prompt_token_count": 12, "candidates_token_count": 3}, "model_version": "gemini-test"}
+            ]
+          },
+          "final_response": {"role": "model", "parts": [{"text": "18C."}]}
+        }
+      ]
+    }
+  ]
+}

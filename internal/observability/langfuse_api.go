@@ -7,14 +7,13 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 )
 
 // LangfuseClient calls the Langfuse public REST API. Traces go through OTLP
 // (see ConfigureLangfuse); this covers what OTLP can't send: datasets and
-// evaluator setup.
+// scores.
 type LangfuseClient struct {
 	cfg  LangfuseConfig
 	http *http.Client
@@ -48,68 +47,30 @@ func (c *LangfuseClient) UpsertDatasetItem(ctx context.Context, dataset, id stri
 	}, nil)
 }
 
-// NamedID is the part of a Langfuse evaluator or evaluation rule we match on.
-type NamedID struct {
-	ID   string `json:"id"`
-	Name string `json:"name"`
+// Score is a numeric score on a trace.
+type Score struct {
+	// ID makes the call idempotent: a score with the same ID replaces the old
+	// one.
+	ID      string
+	TraceID string
+	Name    string
+	Value   float64
+	Comment string
 }
 
-func (c *LangfuseClient) ListEvaluators(ctx context.Context) ([]NamedID, error) {
-	return c.list(ctx, "/api/public/v2/evaluators")
-}
-
-func (c *LangfuseClient) ListEvaluationRules(ctx context.Context) ([]NamedID, error) {
-	return c.list(ctx, "/api/public/v2/evaluation-rules")
-}
-
-// CountLLMConnections returns how many LLM connections the project has.
-// Evaluators need one to run.
-func (c *LangfuseClient) CountLLMConnections(ctx context.Context) (int, error) {
-	var resp struct {
-		Data []json.RawMessage `json:"data"`
+// CreateScore creates or replaces a numeric score.
+func (c *LangfuseClient) CreateScore(ctx context.Context, s Score) error {
+	body := map[string]any{
+		"id":       s.ID,
+		"traceId":  s.TraceID,
+		"name":     s.Name,
+		"value":    s.Value,
+		"dataType": "NUMERIC",
 	}
-	err := c.do(ctx, http.MethodGet, "/api/public/llm-connections", nil, &resp)
-	return len(resp.Data), err
-}
-
-// CreateEvaluator takes a CreateEvaluatorRequest from the Langfuse API.
-func (c *LangfuseClient) CreateEvaluator(ctx context.Context, req any) (string, error) {
-	var resp NamedID
-	err := c.do(ctx, http.MethodPost, "/api/public/v2/evaluators", req, &resp)
-	return resp.ID, err
-}
-
-// CreateEvaluationRule takes a CreateEvaluationRuleRequest from the Langfuse API.
-func (c *LangfuseClient) CreateEvaluationRule(ctx context.Context, req any) (string, error) {
-	var resp NamedID
-	err := c.do(ctx, http.MethodPost, "/api/public/v2/evaluation-rules", req, &resp)
-	return resp.ID, err
-}
-
-// list reads every page of a cursor-paginated v2 list endpoint.
-func (c *LangfuseClient) list(ctx context.Context, path string) ([]NamedID, error) {
-	var all []NamedID
-	cursor := ""
-	for {
-		q := url.Values{"limit": {"100"}}
-		if cursor != "" {
-			q.Set("cursor", cursor)
-		}
-		var resp struct {
-			Data []NamedID `json:"data"`
-			Meta struct {
-				Cursor string `json:"cursor"`
-			} `json:"meta"`
-		}
-		if err := c.do(ctx, http.MethodGet, path+"?"+q.Encode(), nil, &resp); err != nil {
-			return nil, err
-		}
-		all = append(all, resp.Data...)
-		if resp.Meta.Cursor == "" || len(resp.Data) == 0 {
-			return all, nil
-		}
-		cursor = resp.Meta.Cursor
+	if s.Comment != "" {
+		body["comment"] = s.Comment
 	}
+	return c.do(ctx, http.MethodPost, "/api/public/scores", body, nil)
 }
 
 // do sends body as JSON, if not nil, and decodes the response into out, if not nil.

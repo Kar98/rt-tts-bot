@@ -4,24 +4,69 @@
   "eval_cases": [
     {
       "eval_id": "humour_surround",
-      "input": "Generate a donation message. Chat summary: Artosis held off a Zerg surround with a repair op, chat spammed W, and someone asked why vultures can't load into bunkers.",
-      "session_state": {"dono_tone": "humour"},
-      "context": "Artosis held off a Zerg surround with a repair op. Chat spammed W. A viewer asked why vultures can't load into bunkers.",
-      "reference": ""
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Generate a donation message. Chat summary: Artosis held off a Zerg surround with a repair op, chat spammed W, and someone asked why vultures can't load into bunkers."
+              }
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "dono_generator",
+        "user_id": "eval_user",
+        "state": {
+          "dono_tone": "humour"
+        }
+      }
     },
     {
       "eval_id": "question_bunkers",
-      "input": "Generate a donation message. Chat summary: chat is arguing about whether vultures should be able to enter bunkers.",
-      "session_state": {"dono_tone": "question"},
-      "context": "Chat is arguing about whether vultures should be able to enter bunkers.",
-      "reference": ""
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Generate a donation message. Chat summary: chat is arguing about whether vultures should be able to enter bunkers."
+              }
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "dono_generator",
+        "user_id": "eval_user",
+        "state": {
+          "dono_tone": "question"
+        }
+      }
     },
     {
       "eval_id": "song_gg",
-      "input": "Generate a donation message. Chat summary: Artosis just won a long Terran vs Zerg game and chat is posting artoGg.",
-      "session_state": {"dono_tone": "song"},
-      "context": "Artosis won a long Terran vs Zerg game. Chat is posting artoGg.",
-      "reference": ""
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Generate a donation message. Chat summary: Artosis just won a long Terran vs Zerg game and chat is posting artoGg."
+              }
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "dono_generator",
+        "user_id": "eval_user",
+        "state": {
+          "dono_tone": "song"
+        }
+      }
     }
   ]
 }

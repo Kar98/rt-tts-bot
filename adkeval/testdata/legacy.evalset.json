@@ -1,0 +1,35 @@
+{
+  "eval_set_id": "weather",
+  "description": "Legacy intermediate_data, unknown keys and a scenario case",
+  "eval_cases": [
+    {
+      "eval_id": "sf_weather",
+      "custom_case_key": {"keep": "me"},
+      "session_input": {
+        "app_name": "weather",
+        "user_id": "u1",
+        "state": {"preferred_units": "metric"},
+        "custom_session_key": 7
+      },
+      "rubrics": [
+        {"rubric_id": "concise", "rubric_content": {"text_property": "The response is concise."}, "type": "FINAL_RESPONSE_QUALITY"}
+      ],
+      "conversation": [
+        {
+          "invocation_id": "e-1",
+          "user_content": {"role": "user", "parts": [{"text": "Weather in SF?"}]},
+          "final_response": {"role": "model", "parts": [{"text": "18C and sunny."}]},
+          "intermediate_data": {
+            "tool_uses": [{"id": "fc1", "name": "get_weather", "args": {"city_name": "SF", "days": 1}}],
+            "tool_responses": [{"id": "fc1", "name": "get_weather", "response": {"temp_c": 18, "sky_state": "sunny"}}],
+            "intermediate_responses": [["router", [{"text": "Routing to weather"}]]]
+          }
+        }
+      ]
+    },
+    {
+      "eval_id": "booking_sim",
+      "conversation_scenario": {"starting_prompt": "I need a flight.", "conversation_plan": "Book SFO to LAX.", "user_persona": "NOVICE"}
+    }
+  ]
+}

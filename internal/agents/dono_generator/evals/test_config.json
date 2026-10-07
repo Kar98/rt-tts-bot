@@ -1,0 +1,30 @@
+{
+  "criteria": {
+    "rubric_based_final_response_quality_v1": {
+      "threshold": 0.6,
+      "judge_model_options": {
+        "judge_model": "gemini-3.5-flash"
+      },
+      "rubrics": [
+        {
+          "rubric_id": "humour_quality",
+          "rubric_content": {
+            "text_property": "The message would entertain the stream's viewers in the way its tone calls for: a joke for humour, a question for question, song lyrics for song."
+          }
+        },
+        {
+          "rubric_id": "factualness",
+          "rubric_content": {
+            "text_property": "The message only refers to events in the chat summary."
+          }
+        },
+        {
+          "rubric_id": "stream_tone",
+          "rubric_content": {
+            "text_property": "The message reads like a Twitch donation message on a StarCraft: Brood War stream, written in the tone given in the developer instructions."
+          }
+        }
+      ]
+    }
+  }
+}
