@@ -38,6 +38,10 @@ test:
 eval-dono:
     RUN_EVALS=1 go test -run TestDonoEval -count=1 -v ./internal/agents/dono_generator/
 
+# Run and score the chat_summariser eval set. Results go to internal/agents/summariser/.adk/eval_history.
+eval-summariser:
+    RUN_EVALS=1 go test -run TestSummariserEval -count=1 -v ./internal/agents/summariser/
+
 # Upload an eval result file to Langfuse. Without a file, uploads the newest dono_generator result.
 eval-upload file="":
     go run ./cmd/eval-upload {{ if file != "" { "-file " + file } else { "" } }}

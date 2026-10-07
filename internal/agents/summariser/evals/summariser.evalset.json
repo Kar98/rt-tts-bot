@@ -1,0 +1,28 @@
+{
+  "eval_set_id": "summariser",
+  "description": "Quality of chat_summariser summaries. Each case names a chat log in internal/twitchchat/message_data under session_input.state.chat_file; the eval test loads it into chat_transcript.",
+  "eval_cases": [
+    {
+      "eval_id": "surround_w_spam",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Summarise the chat."
+              }
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "chat_summariser",
+        "user_id": "eval_user",
+        "state": {
+          "chat_file": "artosis"
+        }
+      }
+    }
+  ]
+}

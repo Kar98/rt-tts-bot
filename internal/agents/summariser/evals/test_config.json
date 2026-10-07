@@ -1,0 +1,42 @@
+{
+  "criteria": {
+    "rubric_based_final_response_quality_v1": {
+      "threshold": 0.6,
+      "judge_model_options": {
+        "judge_model": "gemini-3.5-flash"
+      },
+      "rubrics": [
+        {
+          "rubric_id": "main_topics",
+          "rubric_content": {
+            "text_property": "The summary covers the main topics discussed in the chat transcript."
+          }
+        },
+        {
+          "rubric_id": "viewer_questions",
+          "rubric_content": {
+            "text_property": "If viewers asked questions in the chat transcript, the summary mentions them."
+          }
+        },
+        {
+          "rubric_id": "mood",
+          "rubric_content": {
+            "text_property": "The summary describes the overall mood of the chat."
+          }
+        },
+        {
+          "rubric_id": "grounded",
+          "rubric_content": {
+            "text_property": "The summary only states things that appear in the chat transcript."
+          }
+        },
+        {
+          "rubric_id": "plain_reply",
+          "rubric_content": {
+            "text_property": "The reply is the summary only, with no preamble, quotes or markdown."
+          }
+        }
+      ]
+    }
+  }
+}

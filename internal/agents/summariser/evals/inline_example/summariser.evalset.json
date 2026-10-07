@@ -1,0 +1,65 @@
+{
+  "eval_set_id": "summariser_inline",
+  "description": "Copy of summariser.evalset.json but with the judges inline to see what the difference is",
+  "eval_cases": [
+    {
+      "eval_id": "surround_w_spam",
+      "conversation": [
+        {
+          "user_content": {
+            "role": "user",
+            "parts": [
+              {
+                "text": "Summarise the chat."
+              }
+            ]
+          }
+        }
+      ],
+      "session_input": {
+        "app_name": "chat_summariser",
+        "user_id": "eval_user",
+        "state": {
+          "chat_file": "artosis"
+        }
+      },
+      "rubrics": [
+        {
+          "rubric_id": "main_topics",
+          "rubric_content": {
+            "text_property": "The summary covers the main topics discussed in the chat transcript."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "viewer_questions",
+          "rubric_content": {
+            "text_property": "If viewers asked questions in the chat transcript, the summary mentions them."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "mood",
+          "rubric_content": {
+            "text_property": "The summary describes the overall mood of the chat."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "grounded",
+          "rubric_content": {
+            "text_property": "The summary only states things that appear in the chat transcript."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        },
+        {
+          "rubric_id": "plain_reply",
+          "rubric_content": {
+            "text_property": "The reply is the summary only, with no preamble, quotes or markdown."
+          },
+          "type": "FINAL_RESPONSE_QUALITY"
+        }
+      ]
+    }
+  ]
+}
