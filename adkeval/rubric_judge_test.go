@@ -139,7 +139,19 @@ func TestJudgeSamplesAndSummary(t *testing.T) {
 	rubrics := []Rubric{rubric("funny", "The message is funny.", "")}
 	j := &rubricJudge{threshold: 0.5, opts: judgeOptions{NumSamples: 3, ParallelismLimit: 1}, llm: llm}
 
-	res := j.judge(t.Context(), []judgeTask{{prompt: "ok", rubrics: rubrics}, {prompt: "FAIL", rubrics: rubrics}})
+	var got []JudgeSample
+	ctx := withSampleHook(t.Context(), "c", func(s JudgeSample) { got = append(got, s) })
+	res := j.judge(ctx, []judgeTask{{turn: 1, prompt: "ok", rubrics: rubrics}, {turn: 2, prompt: "FAIL", rubrics: rubrics}})
+	require.Len(t, got, 6, "every sample is reported, failed ones too")
+	var failed int
+	for _, s := range got {
+		if s.Err != nil {
+			failed++
+			assert.Equal(t, 2, s.Turn)
+			assert.Empty(t, s.Reply)
+		}
+	}
+	assert.Equal(t, 3, failed)
 	require.Len(t, res, 2)
 	assert.Equal(t, 1.0, *res[0].Score, "2 of 3 samples said yes")
 	assert.Equal(t, StatusPassed, res[0].Status)
@@ -245,8 +257,15 @@ func TestMultiTurnJudgesLastTurnOnly(t *testing.T) {
 		{UserContent: NewContent(genai.NewContentFromText("one", genai.RoleUser))},
 		{UserContent: NewContent(genai.NewContentFromText("two", genai.RoleUser))},
 	}
-	res, err := ev.Evaluate(t.Context(), invs, nil)
+	var got []JudgeSample
+	ctx := withSampleHook(t.Context(), "case1", func(s JudgeSample) { got = append(got, s) })
+	res, err := ev.Evaluate(ctx, invs, nil)
 	require.NoError(t, err)
+	require.Len(t, got, 1)
+	assert.Equal(t, JudgeSample{
+		EvalID: "case1", Metric: "rubric_based_multi_turn_trajectory_quality_v1", Turn: 2, Sample: 1,
+		Prompt: prompts[0], Reply: got[0].Reply,
+	}, got[0], "the multi-turn judge reports the last turn")
 	require.Len(t, prompts, 1)
 	assert.Contains(t, prompts[0], "USER TURN 1: one\nUSER TURN 2: two")
 	assert.Contains(t, prompts[0], `"id": "polite"`)

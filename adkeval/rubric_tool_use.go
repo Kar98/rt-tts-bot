@@ -29,7 +29,7 @@ func (e *toolUseQualityEvaluator) Evaluate(ctx context.Context, actual, _ []Invo
 		if err != nil {
 			return MetricResult{}, err
 		}
-		tasks[i] = judgeTask{rubrics: rubrics, prompt: fillPrompt(toolUsePrompt, map[string]string{
+		tasks[i] = judgeTask{turn: i + 1, rubrics: rubrics, prompt: fillPrompt(toolUsePrompt, map[string]string{
 			"tool_declarations": toolDeclarations(inv.AppDetails),
 			"user_input":        contentText(inv.UserContent.GenAI()),
 			"tool_usage":        toolSteps(inv),

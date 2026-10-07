@@ -54,8 +54,14 @@ func TestRunParallel(t *testing.T) {
 	}}`))
 	require.NoError(t, err)
 
+	var samples []JudgeSample
 	set := evalSetOf(8)
 	res, err := Run(t.Context(), Config{
+		OnJudgeSample: func(s JudgeSample) {
+			mu.Lock()
+			defer mu.Unlock()
+			samples = append(samples, s)
+		},
 		EvalSet:     set,
 		EvalConfig:  cfg,
 		Agent:       a,
@@ -104,6 +110,20 @@ func TestRunParallel(t *testing.T) {
 		assert.NotNil(t, actual.Duration)
 	}
 	assert.Len(t, judged, 7)
+
+	require.Len(t, samples, 7, "one judge call per case that reached scoring")
+	var ids []string
+	for _, s := range samples {
+		ids = append(ids, s.EvalID)
+		assert.Equal(t, "rubric_based_final_response_quality_v1", s.Metric)
+		assert.Equal(t, 1, s.Turn)
+		assert.Equal(t, 1, s.Sample)
+		assert.Contains(t, s.Prompt, "Tone is song.")
+		assert.Contains(t, s.Reply, "Verdict: yes")
+		assert.NoError(t, s.Err)
+	}
+	assert.NotContains(t, ids, "case5", "case5 failed before scoring")
+	assert.Contains(t, ids, "case7")
 
 	path, err := WriteResult(t.TempDir(), res)
 	require.NoError(t, err)

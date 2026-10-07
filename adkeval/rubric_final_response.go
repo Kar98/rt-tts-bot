@@ -33,7 +33,7 @@ func (e *finalResponseQualityEvaluator) Evaluate(ctx context.Context, actual, _ 
 		if err != nil {
 			return MetricResult{}, err
 		}
-		tasks[i] = judgeTask{rubrics: rubrics, prompt: fillPrompt(finalResponsePrompt, map[string]string{
+		tasks[i] = judgeTask{turn: i + 1, rubrics: rubrics, prompt: fillPrompt(finalResponsePrompt, map[string]string{
 			"developer_instructions": developerInstructions(inv),
 			"tool_declarations":      toolDeclarations(inv.AppDetails),
 			"user_input":             contentText(inv.UserContent.GenAI()),

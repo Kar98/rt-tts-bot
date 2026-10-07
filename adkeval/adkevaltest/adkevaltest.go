@@ -3,7 +3,10 @@ package adkevaltest
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/Kar98/artosis-tts-agent/adkeval"
@@ -12,8 +15,24 @@ import (
 // Run evaluates cfg, writes the result file to outDir and logs a summary.
 // Each case is a subtest, which fails if the case's status is FAILED. The
 // result file is written before any case fails.
+//
+// Every LLM judge reply is also written, in full, next to the result file:
+// <result name>.judge/<eval_id>/<metric>/turn<N>_sample<M>.txt. The result
+// file keeps only one rationale per rubric.
 func Run(t *testing.T, cfg adkeval.Config, outDir string) *adkeval.EvalSetResult {
 	t.Helper()
+	var mu sync.Mutex
+	var samples []adkeval.JudgeSample
+	next := cfg.OnJudgeSample
+	cfg.OnJudgeSample = func(s adkeval.JudgeSample) {
+		mu.Lock()
+		samples = append(samples, s)
+		mu.Unlock()
+		if next != nil {
+			next(s)
+		}
+	}
+
 	res, err := adkeval.Run(t.Context(), cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -23,6 +42,13 @@ func Run(t *testing.T, cfg adkeval.Config, outDir string) *adkeval.EvalSetResult
 		t.Fatalf("writing results: %v", err)
 	}
 	t.Logf("results: %s", path)
+	if len(samples) > 0 {
+		dir := filepath.Join(outDir, res.EvalSetResultName+".judge")
+		if err := WriteJudgeSamples(dir, samples); err != nil {
+			t.Fatalf("writing judge replies: %v", err)
+		}
+		t.Logf("judge replies: %s", dir)
+	}
 
 	for _, c := range res.EvalCaseResults {
 		t.Run(c.EvalID, func(t *testing.T) {
@@ -93,4 +119,27 @@ func verdict(score *float64) string {
 	default:
 		return "no"
 	}
+}
+
+// WriteJudgeSamples writes each sample to
+// dir/<eval_id>/<metric>/turn<N>_sample<M>.txt: a short header, the prompt
+// the judge got, then its reply.
+func WriteJudgeSamples(dir string, samples []adkeval.JudgeSample) error {
+	for _, s := range samples {
+		caseDir := filepath.Join(dir, s.EvalID, s.Metric)
+		if err := os.MkdirAll(caseDir, 0o755); err != nil {
+			return err
+		}
+		var b strings.Builder
+		fmt.Fprintf(&b, "eval_id: %s\nmetric: %s\nturn: %d\nsample: %d\n", s.EvalID, s.Metric, s.Turn, s.Sample)
+		if s.Err != nil {
+			fmt.Fprintf(&b, "error: %v\n", s.Err)
+		}
+		fmt.Fprintf(&b, "\n===== PROMPT =====\n%s\n\n===== REPLY =====\n%s\n", s.Prompt, s.Reply)
+		name := fmt.Sprintf("turn%d_sample%d.txt", s.Turn, s.Sample)
+		if err := os.WriteFile(filepath.Join(caseDir, name), []byte(b.String()), 0o644); err != nil {
+			return err
+		}
+	}
+	return nil
 }

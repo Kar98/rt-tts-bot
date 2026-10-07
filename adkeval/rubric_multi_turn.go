@@ -51,7 +51,7 @@ func (e *multiTurnTrajectoryEvaluator) Evaluate(ctx context.Context, actual, _ [
 		"properties":             props,
 	})
 
-	judged := e.j.summarize(e.j.judge(ctx, []judgeTask{{prompt: prompt, rubrics: rubrics}}))
+	judged := e.j.summarize(e.j.judge(ctx, []judgeTask{{turn: len(actual), prompt: prompt, rubrics: rubrics}}))
 	perInvocation := make([]InvocationResult, len(actual))
 	for i := range len(actual) - 1 {
 		perInvocation[i] = InvocationResult{Status: StatusNotEvaluated}

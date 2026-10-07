@@ -135,6 +135,8 @@ func (j *rubricJudge) effectiveRubrics(inv Invocation) ([]Rubric, error) {
 
 // judgeTask is one turn to judge: its prompt and rubrics.
 type judgeTask struct {
+	// turn is the 1-based turn the task judges.
+	turn    int
 	prompt  string
 	rubrics []Rubric
 }
@@ -158,6 +160,14 @@ func (j *rubricJudge) judge(ctx context.Context, tasks []judgeTask) []Invocation
 				sem <- struct{}{}
 				defer func() { <-sem }()
 				text, err := j.sample(ctx, task.prompt)
+				reportSample(ctx, JudgeSample{
+					Metric: j.metric,
+					Turn:   task.turn,
+					Sample: s + 1,
+					Prompt: task.prompt,
+					Reply:  text,
+					Err:    err,
+				})
 				mu.Lock()
 				defer mu.Unlock()
 				if err != nil {

@@ -37,6 +37,50 @@ type Config struct {
 	// Parallelism caps how many cases run at once. 0 means
 	// DefaultParallelism; 1 runs them one at a time.
 	Parallelism int
+
+	// OnJudgeSample, if set, is called with every reply from an LLM judge,
+	// including the full text the result file leaves out. It is called from
+	// several goroutines at once.
+	OnJudgeSample func(JudgeSample)
+}
+
+// JudgeSample is one LLM judge call: the prompt it got and what it replied.
+type JudgeSample struct {
+	EvalID string
+	Metric string
+	// Turn and Sample are 1-based. The judge runs num_samples times per
+	// turn.
+	Turn   int
+	Sample int
+	Prompt string
+	Reply  string
+	// Err is set if the call failed; Reply is then empty.
+	Err error
+}
+
+type sampleHookKey struct{}
+
+type sampleHook struct {
+	evalID string
+	fn     func(JudgeSample)
+}
+
+// withSampleHook makes reportSample pass samples judged under ctx to fn,
+// tagged with evalID.
+func withSampleHook(ctx context.Context, evalID string, fn func(JudgeSample)) context.Context {
+	if fn == nil {
+		return ctx
+	}
+	return context.WithValue(ctx, sampleHookKey{}, sampleHook{evalID, fn})
+}
+
+func reportSample(ctx context.Context, s JudgeSample) {
+	h, ok := ctx.Value(sampleHookKey{}).(sampleHook)
+	if !ok {
+		return
+	}
+	s.EvalID = h.evalID
+	h.fn(s)
 }
 
 // Run evaluates every case in the eval set and returns the results in eval
@@ -139,6 +183,7 @@ func runCase(ctx context.Context, cfg Config, evaluators []Evaluator, c EvalCase
 		})
 	}
 
+	ctx = withSampleHook(ctx, c.EvalID, cfg.OnJudgeSample)
 	var statuses []EvalStatus
 	for i, ev := range evaluators {
 		crit := cfg.EvalConfig.Criteria[i]
