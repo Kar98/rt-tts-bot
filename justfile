@@ -67,7 +67,7 @@ gcp-setup langfuse_host public_key secret_key:
     gcloud projects add-iam-policy-binding {{project}} \
       --member="serviceAccount:service-$(gcloud projects describe {{project}} --format='value(projectNumber)')@gcp-sa-aiplatform-re.iam.gserviceaccount.com" \
       --role=roles/secretmanager.secretAccessor
-    go install google.golang.org/adk/v2/cmd/adkgo@v2.4.0
+    go install google.golang.org/adk/v2/cmd/adkgo@v2.5.0
 
 # Deploy to Agent Engine. Pass the Agent Engine ID to update an existing deployment.
 deploy id="":
