@@ -12,6 +12,19 @@ import (
 	"github.com/Kar98/artosis-tts-agent/adkeval"
 )
 
+func TestSummaryShowsMetricError(t *testing.T) {
+	got := summary(adkeval.EvalCaseResult{
+		EvalID:          "c1",
+		FinalEvalStatus: adkeval.StatusNotEvaluated,
+		OverallEvalMetricResults: []adkeval.EvalMetricResult{{
+			MetricName: "m",
+			EvalStatus: adkeval.StatusNotEvaluated,
+			Err:        errors.Join(errors.New("turn 1: judge sample 1: quota"), errors.New("turn 1: judge sample 3: quota")),
+		}},
+	})
+	assert.Contains(t, got, "    error: turn 1: judge sample 1: quota\n           turn 1: judge sample 3: quota\n")
+}
+
 func TestWriteJudgeSamples(t *testing.T) {
 	dir := t.TempDir()
 	err := WriteJudgeSamples(dir, []adkeval.JudgeSample{

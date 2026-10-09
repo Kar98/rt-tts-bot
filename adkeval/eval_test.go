@@ -131,6 +131,28 @@ func TestRunParallel(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestRunInferenceDefaultsUserRole(t *testing.T) {
+	var got []string
+	agentLLM := &fakeLLM{reply: func(prompt string) (string, error) {
+		got = append(got, prompt)
+		return "ok", nil
+	}}
+	a, err := llmagent.New(llmagent.Config{Name: "test_agent", Model: agentLLM})
+	require.NoError(t, err)
+
+	c := EvalCase{
+		EvalID:       "no_role",
+		SessionInput: &SessionInput{AppName: "test_app", UserID: "u"},
+		Conversation: []Invocation{{UserContent: &Content{Parts: []*genai.Part{{Text: "hello"}}}}},
+	}
+	invs, _, err := runInference(t.Context(), a, c)
+	require.NoError(t, err)
+
+	assert.Equal(t, []string{"hello"}, got)
+	assert.Equal(t, genai.RoleUser, invs[0].UserContent.Role)
+	assert.Empty(t, c.Conversation[0].UserContent.Role, "eval set is not changed")
+}
+
 func TestRunCaseStatus(t *testing.T) {
 	assert.Equal(t, StatusFailed, caseStatus([]EvalStatus{StatusPassed, StatusFailed, StatusNotEvaluated}))
 	assert.Equal(t, StatusPassed, caseStatus([]EvalStatus{StatusNotEvaluated, StatusPassed}))
@@ -151,6 +173,22 @@ func TestRunMetricErrorIsNotEvaluated(t *testing.T) {
 	assert.Equal(t, StatusNotEvaluated, c.FinalEvalStatus)
 	assert.Equal(t, StatusNotEvaluated, c.OverallEvalMetricResults[0].EvalStatus)
 	assert.ErrorContains(t, c.OverallEvalMetricResults[0].Err, "rubrics are required")
+}
+
+func TestRunJudgeErrorIsReported(t *testing.T) {
+	agentLLM := &fakeLLM{reply: func(string) (string, error) { return "hello", nil }}
+	a, err := llmagent.New(llmagent.Config{Name: "a", Model: agentLLM})
+	require.NoError(t, err)
+	cfg, err := parseConfig([]byte(`{"criteria":{"rubric_based_final_response_quality_v1": {"threshold": 0.5, "judge_model_options": {"num_samples": 1},
+		"rubrics": [{"rubric_id": "polite", "rubric_content": {"text_property": "The reply is polite."}}]}}}`))
+	require.NoError(t, err)
+	judge := fakeJudgeFactory(func(string) (string, error) { return "", errors.New("Error 429, RESOURCE_EXHAUSTED") })
+
+	res, err := Run(t.Context(), Config{EvalSet: evalSetOf(1), EvalConfig: cfg, Agent: a, JudgeModel: judge})
+	require.NoError(t, err)
+	m := res.EvalCaseResults[0].OverallEvalMetricResults[0]
+	assert.Equal(t, StatusNotEvaluated, m.EvalStatus)
+	assert.ErrorContains(t, m.Err, "turn 1: judge sample 1: Error 429, RESOURCE_EXHAUSTED")
 }
 
 func TestRunScenarioCaseFails(t *testing.T) {

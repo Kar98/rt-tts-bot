@@ -192,7 +192,7 @@ func runCase(ctx context.Context, cfg Config, evaluators []Evaluator, c EvalCase
 			mr = MetricResult{Status: StatusNotEvaluated}
 		}
 		overall := metricResult(crit, mr.Score, mr.Status, mr.RubricScores)
-		overall.Err = err
+		overall.Err = errors.Join(err, mr.Err)
 		res.OverallEvalMetricResults = append(res.OverallEvalMetricResults, overall)
 		statuses = append(statuses, mr.Status)
 		for j, inv := range mr.PerInvocation {

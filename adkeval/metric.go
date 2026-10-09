@@ -21,6 +21,9 @@ type MetricResult struct {
 	RubricScores []RubricScore
 	// PerInvocation has one entry per turn, in order.
 	PerInvocation []InvocationResult
+	// Err says why some or all turns weren't evaluated, such as a judge call
+	// that failed.
+	Err error
 }
 
 // InvocationResult is an Evaluator's result for one turn.
@@ -28,6 +31,8 @@ type InvocationResult struct {
 	Score        *float64
 	Status       EvalStatus
 	RubricScores []RubricScore
+	// Err says why the turn wasn't evaluated.
+	Err error
 }
 
 // metricFactory builds an Evaluator from a criterion. judges gives it a judge

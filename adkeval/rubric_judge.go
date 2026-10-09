@@ -171,7 +171,7 @@ func (j *rubricJudge) judge(ctx context.Context, tasks []judgeTask) []Invocation
 				mu.Lock()
 				defer mu.Unlock()
 				if err != nil {
-					errs[i] = errors.Join(errs[i], err)
+					errs[i] = errors.Join(errs[i], fmt.Errorf("turn %d: judge sample %d: %w", task.turn, s+1, err))
 					return
 				}
 				samples[i][s] = text
@@ -183,7 +183,7 @@ func (j *rubricJudge) judge(ctx context.Context, tasks []judgeTask) []Invocation
 	results := make([]InvocationResult, len(tasks))
 	for i, task := range tasks {
 		if errs[i] != nil {
-			results[i] = InvocationResult{Status: StatusNotEvaluated}
+			results[i] = InvocationResult{Status: StatusNotEvaluated, Err: errs[i]}
 			continue
 		}
 		var perSample [][]RubricScore
@@ -229,7 +229,9 @@ func (j *rubricJudge) summarize(perInvocation []InvocationResult) MetricResult {
 	var all []*float64
 	byID := map[string][]*float64{}
 	var order []string
+	var errs []error
 	for _, r := range perInvocation {
+		errs = append(errs, r.Err)
 		for _, rs := range r.RubricScores {
 			if _, ok := byID[rs.RubricID]; !ok {
 				order = append(order, rs.RubricID)
@@ -248,6 +250,7 @@ func (j *rubricJudge) summarize(perInvocation []InvocationResult) MetricResult {
 		Status:        statusFor(score, j.threshold),
 		RubricScores:  overall,
 		PerInvocation: perInvocation,
+		Err:           errors.Join(errs...),
 	}
 }
 

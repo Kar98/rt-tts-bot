@@ -156,6 +156,8 @@ func TestJudgeSamplesAndSummary(t *testing.T) {
 	assert.Equal(t, 1.0, *res[0].Score, "2 of 3 samples said yes")
 	assert.Equal(t, StatusPassed, res[0].Status)
 	assert.Equal(t, StatusNotEvaluated, res[1].Status, "a failed sample makes the turn NOT_EVALUATED")
+	assert.NoError(t, res[0].Err)
+	assert.ErrorContains(t, res[1].Err, "turn 2: judge sample 3: judge down")
 	assert.Equal(t, int32(6), llm.calls.Load())
 
 	sum := j.summarize(res)
@@ -163,6 +165,7 @@ func TestJudgeSamplesAndSummary(t *testing.T) {
 	assert.Equal(t, StatusPassed, sum.Status)
 	require.Len(t, sum.RubricScores, 1)
 	assert.Equal(t, aggregatedRationale, *sum.RubricScores[0].Rationale)
+	assert.ErrorContains(t, sum.Err, "turn 2: judge sample 1: judge down")
 }
 
 func TestFinalResponsePrompt(t *testing.T) {

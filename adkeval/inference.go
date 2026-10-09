@@ -68,14 +68,15 @@ func runInference(ctx context.Context, a agent.Agent, c EvalCase) ([]Invocation,
 	var invs []Invocation
 	for i, want := range c.Conversation {
 		start := time.Now()
+		userContent := withUserRole(want.UserContent)
 		var events []*session.Event
-		for ev, err := range r.Run(ctx, userID, sessionID, want.UserContent.GenAI(), agent.RunConfig{}) {
+		for ev, err := range r.Run(ctx, userID, sessionID, userContent.GenAI(), agent.RunConfig{}) {
 			if err != nil {
 				return nil, nil, fmt.Errorf("turn %d: %w", i+1, err)
 			}
 			events = append(events, ev)
 		}
-		inv := toInvocation(want.UserContent, events)
+		inv := toInvocation(userContent, events)
 		inv.CreationTimestamp = float64(start.UnixMicro()) / 1e6
 		inv.Duration = ptr(math.Round(time.Since(start).Seconds()*1000) / 1000)
 		inv.AppDetails = rec.snapshot()
@@ -96,6 +97,18 @@ func runInference(ctx context.Context, a agent.Agent, c EvalCase) ([]Invocation,
 		LastUpdateTime: float64(s.LastUpdateTime().UnixMicro()) / 1e6,
 	}
 	return invs, details, nil
+}
+
+// withUserRole returns c with role "user" if it has none. ADK leaves out
+// role-less events when it builds the model request, so the agent would never
+// see the turn. It copies c so the eval set is left as written.
+func withUserRole(c *Content) *Content {
+	if c.Role != "" {
+		return c
+	}
+	out := *c
+	out.Role = genai.RoleUser
+	return &out
 }
 
 // toInvocation turns one turn's events into an Invocation, as adk-python's

@@ -7,7 +7,6 @@
       "conversation": [
         {
           "user_content": {
-            "role": "user",
             "parts": [
               {
                 "text": "Generate a donation message. Chat summary: Artosis held off a Zerg surround with a repair op, chat spammed W, and someone asked why vultures can't load into bunkers."
@@ -17,8 +16,6 @@
         }
       ],
       "session_input": {
-        "app_name": "dono_generator",
-        "user_id": "eval_user",
         "state": {
           "dono_tone": "humour"
         }
@@ -29,7 +26,6 @@
       "conversation": [
         {
           "user_content": {
-            "role": "user",
             "parts": [
               {
                 "text": "Generate a donation message. Chat summary: chat is arguing about whether vultures should be able to enter bunkers."
@@ -39,8 +35,6 @@
         }
       ],
       "session_input": {
-        "app_name": "dono_generator",
-        "user_id": "eval_user",
         "state": {
           "dono_tone": "question"
         }
@@ -51,7 +45,6 @@
       "conversation": [
         {
           "user_content": {
-            "role": "user",
             "parts": [
               {
                 "text": "Generate a donation message. Chat summary: Artosis just won a long Terran vs Zerg game and chat is posting artoGg."
@@ -61,8 +54,6 @@
         }
       ],
       "session_input": {
-        "app_name": "dono_generator",
-        "user_id": "eval_user",
         "state": {
           "dono_tone": "song"
         }

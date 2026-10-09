@@ -3,7 +3,8 @@
     "rubric_based_final_response_quality_v1": {
       "threshold": 0.6,
       "judge_model_options": {
-        "judge_model": "gemini-3.5-flash"
+        "judge_model": "gemini-3.5-flash",
+        "num_samples": 1
       },
       "rubrics": [
         {
@@ -15,7 +16,7 @@
         {
           "rubric_id": "factualness",
           "rubric_content": {
-            "text_property": "The message only refers to events in the chat summary."
+            "text_property": "The message is factually correct based on what happens in a 1v1 brood war settings, and factually correct about the streamer. Facts about broodwar: -plague is not used on seige tanks, but typically medic, marine, vessels -artosis likes to sit on 2 bases .Facts about artosis: -has kids -has a wife -has hair -wears a hat sometimes -lives in canada"
           }
         },
         {

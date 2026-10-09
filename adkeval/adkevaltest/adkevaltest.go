@@ -72,7 +72,8 @@ func summary(c adkeval.EvalCaseResult) string {
 	for _, m := range c.OverallEvalMetricResults {
 		fmt.Fprintf(&b, "  %s: %s, score %s, threshold %s\n", m.MetricName, m.EvalStatus, num(m.Score), num(m.Threshold))
 		if m.Err != nil {
-			fmt.Fprintf(&b, "    error: %v\n", m.Err)
+			// errors.Join puts each error on its own line.
+			fmt.Fprintf(&b, "    error: %s\n", strings.ReplaceAll(m.Err.Error(), "\n", "\n           "))
 		}
 	}
 	for i, inv := range c.EvalMetricResultPerInvocation {
