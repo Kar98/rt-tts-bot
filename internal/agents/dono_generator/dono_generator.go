@@ -14,7 +14,8 @@ import (
 //go:embed instruction.md
 var instructionTemplate string
 var instructionVars = map[string]string{
-	"channelType": "starcraft brood war channel",
+	"channelType":   "starcraft brood war channel",
+	"streamerFacts": "Artosis is a 40 year old man, who has been playing starcraft for over 20 years. He is married and has children. He is A rank but wants to be S rank. He often critisises Protoss players for their lack of skill, but still loses to them. He cherishes skill, honour, and hard work.",
 }
 
 const AgentName = "dono_generator"

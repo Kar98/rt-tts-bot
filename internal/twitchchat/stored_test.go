@@ -24,3 +24,11 @@ func TestMessageLoadingMissingFile(t *testing.T) {
 	_, err = StoredSource{}.Fetch(t.Context(), Request{Channel: "../stored.go"})
 	assert.Error(t, err)
 }
+
+func TestSafariParsing(t *testing.T) {
+	ss := StoredSource{}
+	messages, err := ss.Fetch(t.Context(), Request{Channel: "rt1.txt"})
+	assert.NoError(t, err)
+	assert.NotEmpty(t, messages)
+	assert.Equal(t, "smh", messages[0].Text)
+}

@@ -3,13 +3,13 @@
   "description": "Quality of dono_generator donation messages",
   "eval_cases": [
     {
-      "eval_id": "humour_surround",
+      "eval_id": "tangia",
       "conversation": [
         {
           "user_content": {
             "parts": [
               {
-                "text": "Generate a donation message. Chat summary: Artosis held off a Zerg surround with a repair op, chat spammed W, and someone asked why vultures can't load into bunkers."
+                "text": "Generate a donation message based on the viewers mocking the streamer's StarCraft gameplay and asking about Tangia Dungeon"
               }
             ]
           }
@@ -18,25 +18,6 @@
       "session_input": {
         "state": {
           "dono_tone": "humour"
-        }
-      }
-    },
-    {
-      "eval_id": "question_bunkers",
-      "conversation": [
-        {
-          "user_content": {
-            "parts": [
-              {
-                "text": "Generate a donation message. Chat summary: chat is arguing about whether vultures should be able to enter bunkers."
-              }
-            ]
-          }
-        }
-      ],
-      "session_input": {
-        "state": {
-          "dono_tone": "question"
         }
       }
     },

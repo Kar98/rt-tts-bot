@@ -22,7 +22,7 @@
         {
           "rubric_id": "stream_tone",
           "rubric_content": {
-            "text_property": "The message reads like a Twitch donation message on a StarCraft: Brood War stream, written in the tone given in the developer instructions."
+            "text_property": "The message reads like a Twitch donation message on a StarCraft: Brood War stream, written in the tone given in the developer instructions. Any metaphors use brood war language."
           }
         }
       ]
